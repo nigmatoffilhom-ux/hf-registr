@@ -7,7 +7,7 @@
   Video yo'li LOYIHA ildiziga nisbatan (masalan assets/mening-roto.webm); bermasangiz blokning namuna-roto.webm i.
 -->
 <html data-composition-variables='[
-  {"id":"video","type":"string","label":"Shaffof video (webm, LOYIHA ildiziga nisbatan)","default":"roto/blok/namuna-roto.webm"},
+  {"id":"video","type":"string","label":"Shaffof video (webm, LOYIHA ildiziga nisbatan)","default":"compositions/roto/blok/namuna-roto.webm"},
   {"id":"fon","type":"enum","label":"Orqa fon","default":"gradient","options":[{"value":"gradient","label":"Gradient"},{"value":"rang","label":"Bitta rang"},{"value":"rasm","label":"Rasm (fon_rasm)"},{"value":"yoq","label":"Fon yo`q (faqat shaffof)"}]},
   {"id":"rang1","type":"string","label":"Fon rangi 1","default":"#10224a"},
   {"id":"rang2","type":"string","label":"Fon rangi 2","default":"#05070d"},
@@ -33,7 +33,7 @@
 <div id="root" data-composition-id="fx-roto">
   <div class="rt-fon"></div>
   <div class="rt-nur"></div>
-  <div class="rt-v"><video class="rt-video" muted playsinline data-start="0"></video></div>
+  <div class="rt-v"><video id="rt-video" class="rt-video" src="compositions/roto/blok/namuna-roto.webm" muted playsinline data-start="0"></video></div>
 </div>
 <script>
 (function(){
@@ -49,7 +49,7 @@
   else fon.style.background = 'linear-gradient(160deg,' + (V.rang1 || '#10224a') + ',' + (V.rang2 || '#05070d') + ')';
   if (V.nur === false || FONT === 'yoq') nur.style.display = 'none';
   vid.setAttribute('data-duration', String(DUR));
-  vid.src = V.video || 'roto/blok/namuna-roto.webm';
+  vid.src = V.video || 'compositions/roto/blok/namuna-roto.webm';
   // o'lcham: video yuqorisi = kadr balandligi * olcham; proporsiya videoniki (kadr 16:9 bo'lsa ham obyekt kesilmaydi)
   const h = FH * (Number(V.olcham) || 0.9), w = h * (Number(V.ar) || 0.5625);   // ar = video eni/bo'yi (standart 9:16 manba)
   box.style.height = h + 'px'; box.style.width = w + 'px';
