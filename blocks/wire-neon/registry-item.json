@@ -1,0 +1,40 @@
+{
+  "$schema": "https://hyperframes.heygen.com/schema/registry-item.json",
+  "name": "wire-neon",
+  "type": "hyperframes:block",
+  "title": "Wire Neon",
+  "description": "Neon wireframe 3D shakllari: kub, shar, tor, konus, huni, Mobius, to'lqin, spiral va parametrik shakl.",
+  "tags": [
+    "3d",
+    "wireframe",
+    "neon"
+  ],
+  "author": "hf-registr",
+  "dimensions": {
+    "width": 1920,
+    "height": 1080
+  },
+  "duration": 6.0,
+  "files": [
+    {
+      "path": "3d-mini/vendor/LICENSE-three.txt",
+      "target": "compositions/3d-mini/vendor/LICENSE-three.txt",
+      "type": "hyperframes:asset"
+    },
+    {
+      "path": "3d-mini/vendor/m3-three.js",
+      "target": "compositions/3d-mini/vendor/m3-three.js",
+      "type": "hyperframes:asset"
+    },
+    {
+      "path": "3d-ortak/fx3d.js",
+      "target": "compositions/3d-ortak/fx3d.js",
+      "type": "hyperframes:asset"
+    },
+    {
+      "path": "wire-neon/wire-neon.html",
+      "target": "compositions/wire-neon/wire-neon.html",
+      "type": "hyperframes:composition"
+    }
+  ]
+}

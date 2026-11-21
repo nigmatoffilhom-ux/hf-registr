@@ -1,0 +1,202 @@
+<!doctype html>
+<!--
+  fx-exploded-view — qatlamli obyektning "portlash" (teardown) ko'rinishi: qatlamlar yuqoridan pastga ketma-ket ajraladi, har birining yonida
+  yorliq chizig'i + raqam ("01") + nom + izoh. Izometrik (ortografik) kamera, qattiq (shaded) three.js r160 materiallari, RoomEnvironment aksi.
+  tur = klaviatura (reeldagi 6 qatlam: tugma qopqoqlari, kalitlar, plata, elektron plata, tayanchlar, korpus) | yol (yo'l qatlamlari: shisha sharchalar,
+  termoplastik chiziq, asfaltbeton, shag'al asos, grunt — yo'l qurilishi mavzusi). `yorliqlar` = JSON [["Nom","izoh"],...] (yuqoridan pastga) — matnni almashtiradi.
+  Deterministik: har kadr faqat vaqtdan (proxy tween), seeded PRNG; yorliq joylari modelning oxirgi (ajralgan) holatidan olinadi, chiziq esa joriy nuqtadan chiqadi.
+  Host (ulash.py: python3 -I ulash.py exploded-view --loyiha X --var tur=yol):
+  <div data-composition-id="fx-exploded-view" data-composition-src="exploded-view/exploded-view.html" data-variable-values='{"tur":"klaviatura"}'
+       data-start="0" data-duration="8" data-track-index="5" data-width="1920" data-height="1080"></div>
+-->
+<html data-composition-variables='[
+  {"id":"tur","type":"enum","label":"Obyekt","default":"klaviatura","options":[{"value":"klaviatura","label":"Klaviatura (6 qatlam)"},{"value":"yol","label":"Yo‘l qatlamlari (5 qatlam)"}]},
+  {"id":"yorliqlar","type":"string","label":"Yorliqlar JSON: [[nom,izoh],...] yuqoridan pastga (bo‘sh = standart)","default":""},
+  {"id":"sarlavha","type":"string","label":"Yuqori yorliq","default":"EXPLODED VIEW"},
+  {"id":"urgu","type":"color","label":"Urg‘u rangi","default":"#ff7a3c"},
+  {"id":"yorliq","type":"boolean","label":"Yorliqlar va chiziqlar","default":true},
+  {"id":"fon","type":"boolean","label":"Qora fon","default":true},
+  {"id":"bosh","type":"number","label":"Ajralish boshlanishi (s)","default":1.0,"step":0.1},
+  {"id":"qadam","type":"number","label":"Qatlamlar orasidagi kechikish (s)","default":0.55,"step":0.05},
+  {"id":"davom","type":"number","label":"Davomiylik (s)","default":8,"min":2,"step":0.5},
+  {"id":"urug","type":"number","label":"Seed","default":3}
+]'>
+<head><meta charset="UTF-8" /></head>
+<body>
+<template>
+<style>
+  #root{position:absolute;inset:0;overflow:hidden}
+  .ev-cv{position:absolute;inset:0;width:100%;height:100%;display:block}
+  .ev-svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}
+  .ev-svg polyline{fill:none;stroke:#f2efe6;stroke-width:1.6;opacity:.85}
+  .ev-svg circle{fill:var(--ev-u,#ff7a3c)}
+  .ev-top{position:absolute;left:5%;top:5%;font-family:'JetBrains Mono',monospace;color:rgba(242,239,230,.7);letter-spacing:.14em;font-size:20px}
+  .ev-top b{color:var(--ev-u,#ff7a3c);font-weight:700}
+  .ev-l{position:absolute;opacity:0;color:#f2efe6;font-family:'Inter',sans-serif;transform-origin:left center}
+  .ev-l .n{font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--ev-u,#ff7a3c);font-size:.78em;letter-spacing:.06em}
+  .ev-l .n{line-height:1.2}.ev-l .t{font-weight:800;line-height:1.1;letter-spacing:-.01em}
+  .ev-l .d{font-family:'JetBrains Mono',monospace;color:rgba(242,239,230,.55);font-size:.52em;line-height:1.35;margin-top:.35em}
+</style>
+<div id="root" data-composition-id="fx-exploded-view">
+  <canvas class="ev-cv"></canvas>
+  <svg class="ev-svg"></svg>
+  <div class="ev-top"></div>
+</div>
+<script class="ev-vendor" src="../3d-mini/vendor/m3-three.js"></script>
+<script class="ev-ortak" src="../3d-ortak/fx3d.js"></script>
+<script>
+(function(){
+  const V = window.__hyperframes.getVariables() || {};
+  const q = s => document.querySelector(s);
+  const root = q('#root'); const olc = root.closest('[data-width]');
+  const W = Number(olc && olc.getAttribute('data-width')) || 1920, H = Number(olc && olc.getAttribute('data-height')) || 1080;
+  const num = (v, d) => (v === undefined || v === null || v === '' || isNaN(Number(v))) ? d : Number(v);
+  const bool = (v, d) => (v === undefined || v === null || v === '') ? d : !(v === false || v === 'false' || v === 0);
+  const DUR = (Number(olc && olc.getAttribute('data-duration')) || num(V.davom, 8)), BOSH = num(V.bosh, 1.0), QADAM = num(V.qadam, 0.55), SEED = num(V.urug, 3), TUR = V.tur === 'yol' ? 'yol' : 'klaviatura';
+  const URGU = V.urgu || '#ff7a3c', FON = bool(V.fon, true), YORLIQ = bool(V.yorliq, true);
+  const TIK = W < H * 0.8; const U = Math.min(W, H) / 1080;
+  root.style.setProperty('--ev-u', URGU); root.classList.add(TIK ? 'fx-tik' : (W > H * 1.2 ? 'fx-keng' : 'fx-kv'));
+  const LAB = {
+    klaviatura: [['Tugma qopqoqlari', '21 ta qopqoq, yuqorigi qatlam'], ['Kalitlar (switch)', 'bosishni elektr signalga aylantiradi'], ['Plata (plate)', 'kalitlarni tayanch holda ushlaydi'], ['Elektron plata', 'yo‘llar, chiplar va kontaktlar'], ['Tayanchlar', 'plata va korpus orasidagi ustunlar'], ['Korpus', 'hamma qatlamni yig‘adigan asos']],
+    yol: [['Shisha sharchalar', 'tungi yorug‘likni qaytaradi'], ['Termoplastik chiziq', 'issiq eritilib yotqiziladigan belgi qatlami'], ['Asfaltbeton qoplama', 'harakat tushadigan yuqori qatlam'], ['Shag‘al asos', 'yukni pastga taqsimlaydi'], ['Grunt', 'zichlangan tabiiy tuproq']],
+  };
+  let LBL = LAB[TUR]; try { const j = typeof V.yorliqlar === 'string' ? (V.yorliqlar ? JSON.parse(V.yorliqlar) : null) : V.yorliqlar; if (Array.isArray(j) && j.length) LBL = j; } catch (e) {}
+
+  const waitFor = (sel, getter) => new Promise((res, rej) => { const g = getter(); if (g) return res(g); const el = q(sel); if (el) { el.addEventListener('load', () => res(getter())); el.addEventListener('error', rej); } else rej(new Error('skript yo\'q')); });
+  const build = waitFor('.ev-vendor', () => window.M3THREE).then(THREE => waitFor('.ev-ortak', () => window.FX3D).then(F => ({ THREE, F }))).then(async ({ THREE, F }) => {
+    try { await document.fonts.load("800 40px 'Inter'"); await document.fonts.load("700 20px 'JetBrains Mono'"); } catch (e) {}
+    const rnd = F.prng(SEED), E = F.E;
+    const cv = q('.ev-cv'); cv.width = W; cv.height = H;
+    const renderer = new THREE.WebGLRenderer({ canvas: cv, alpha: true, antialias: true, preserveDrawingBuffer: true });
+    renderer.setPixelRatio(1); renderer.setSize(W, H, false); renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 0.95; renderer.outputColorSpace = THREE.SRGBColorSpace;
+    const scene = new THREE.Scene(); const pm = new THREE.PMREMGenerator(renderer);
+    scene.environment = pm.fromScene(new THREE.RoomEnvironment(renderer), 0.04).texture;
+    const key = new THREE.DirectionalLight(0xffffff, 1.7); key.position.set(-4, 9, 6); scene.add(key);
+    const rim = new THREE.DirectionalLight(0x8fb2ff, 1.0); rim.position.set(6, 3, -6); scene.add(rim);
+    const cam = new THREE.OrthographicCamera(-5, 5, 5, -5, 0.1, 200);
+    const model = new THREE.Group(); scene.add(model);
+
+    const std = (c, r, m) => new THREE.MeshStandardMaterial({ color: c, roughness: r === undefined ? 0.5 : r, metalness: m || 0 });
+    const speck = (base, lite, dark, n, size) => { const c = document.createElement('canvas'); c.width = c.height = 256; const g = c.getContext('2d'); g.fillStyle = base; g.fillRect(0, 0, 256, 256); const r = F.prng(SEED + 9);
+      for (let i = 0; i < n; i++) { g.fillStyle = r() < 0.5 ? lite : dark; const s = 1 + r() * size; g.fillRect(r() * 256, r() * 256, s, s); } const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4; return t; };
+    const rrShape = (w, d, r) => { const s = new THREE.Shape(), x = -w / 2, y = -d / 2; s.moveTo(x + r, y); s.lineTo(x + w - r, y); s.quadraticCurveTo(x + w, y, x + w, y + r); s.lineTo(x + w, y + d - r); s.quadraticCurveTo(x + w, y + d, x + w - r, y + d); s.lineTo(x + r, y + d); s.quadraticCurveTo(x, y + d, x, y + d - r); s.lineTo(x, y + r); s.quadraticCurveTo(x, y, x + r, y); return s; };
+    const flat = (geo) => { geo.rotateX(-Math.PI / 2); return geo; }; // shakl (x,y) -> (x,-z), chuqurlik +y
+
+    const layers = []; // yuqoridan pastga: {g, base (yig'ilgan y), top, h (ko'rinma balandlik)}
+    let PW = 8.4, PD = 4.2;
+    if (TUR === 'klaviatura') {
+      const cols = 7, rows = 3, pitch = 1.12; PW = cols * pitch + 0.9; PD = rows * pitch + 0.9;
+      const keys = []; for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) keys.push([(c - (cols - 1) / 2) * pitch, (r - (rows - 1) / 2) * pitch, r, c]);
+      const caps = new THREE.Group(), sws = new THREE.Group();
+      keys.forEach(k => {
+        const acc = (k[2] === 0 && k[3] === 0) || (k[2] === rows - 1 && k[3] === cols - 1);
+        const m = new THREE.Mesh(new THREE.RoundedBoxGeometry(0.98, 0.55, 0.98, 3, 0.1), std(acc ? URGU : '#e2ddd0', 0.55)); m.position.set(k[0], 0.28, k[1]); caps.add(m);
+        const top = new THREE.Mesh(new THREE.RoundedBoxGeometry(0.72, 0.04, 0.72, 2, 0.02), std(acc ? '#ff9a68' : '#fbf9f3', 0.45)); top.position.set(k[0], 0.56, k[1]); caps.add(top);
+        const b = new THREE.Mesh(new THREE.RoundedBoxGeometry(0.62, 0.34, 0.62, 2, 0.05), std('#2b2e38', 0.6)); b.position.set(k[0], 0.17, k[1]); sws.add(b);
+        const sb = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.1, 0.9), std('#1a1c23', 0.7)); sb.position.set(k[0], 0.05, k[1]); sws.add(sb);
+        const st = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.26, 0.18), std(URGU, 0.4)); st.position.set(k[0], 0.43, k[1]); sws.add(st);
+      });
+      // plata: kalit teshiklari bilan
+      const ps = rrShape(PW - 0.3, PD - 0.3, 0.25); keys.forEach(k => { const h = new THREE.Path(); const s = 0.31; h.moveTo(k[0] - s, -k[1] - s); h.lineTo(k[0] - s, -k[1] + s); h.lineTo(k[0] + s, -k[1] + s); h.lineTo(k[0] + s, -k[1] - s); h.closePath(); ps.holes.push(h); });
+      const plate = new THREE.Mesh(flat(new THREE.ExtrudeGeometry(ps, { depth: 0.1, bevelEnabled: false })), std('#b9bec9', 0.32, 0.9)); plate.position.y = 0;
+      // PCB: izlar teksturasi
+      const pc = document.createElement('canvas'); pc.width = 512; pc.height = 256; const pg = pc.getContext('2d'); pg.fillStyle = '#1b6b47'; pg.fillRect(0, 0, 512, 256); const pr = F.prng(SEED + 4);
+      pg.strokeStyle = '#37a874'; pg.lineWidth = 2; for (let i = 0; i < 46; i++) { let x = pr() * 512, y = pr() * 256; pg.beginPath(); pg.moveTo(x, y); for (let j = 0; j < 4; j++) { if (pr() < 0.5) x += (pr() - 0.5) * 160; else y += (pr() - 0.5) * 90; pg.lineTo(x, y); } pg.stroke(); }
+      pg.fillStyle = '#d8b25a'; for (let i = 0; i < 70; i++) { pg.beginPath(); pg.arc(pr() * 512, pr() * 256, 2.5, 0, 7); pg.fill(); }
+      const ptex = new THREE.CanvasTexture(pc); ptex.colorSpace = THREE.SRGBColorSpace; ptex.anisotropy = 4;
+      const pcbm = [std('#175c3d', 0.6), std('#175c3d', 0.6), new THREE.MeshStandardMaterial({ map: ptex, roughness: 0.45, metalness: 0.1 }), std('#175c3d', 0.6), std('#175c3d', 0.6), std('#175c3d', 0.6)];
+      const pcb = new THREE.Mesh(new THREE.BoxGeometry(PW - 0.5, 0.08, PD - 0.5), pcbm); pcb.position.y = 0.04;
+      const pcbG = new THREE.Group(); pcbG.add(pcb);
+      for (let i = 0; i < 5; i++) { const ch = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.1, 0.38), std('#111318', 0.5)); ch.position.set((i - 2) * 1.5, 0.13, ((i % 2) ? 0.55 : -0.55) * (PD - 1.8) / 1.4); pcbG.add(ch); }
+      // tayanchlar
+      const sd = new THREE.Group(); [[-1, -1], [1, -1], [-1, 1], [1, 1], [0, -1], [0, 1]].forEach(p => { const m = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.42, 20), std('#d6a65a', 0.3, 0.9)); m.position.set(p[0] * (PW / 2 - 0.55), 0.21, p[1] * (PD / 2 - 0.55)); sd.add(m); });
+      // korpus: tag + halqa
+      const cs = new THREE.Group(); const slab = new THREE.Mesh(new THREE.RoundedBoxGeometry(PW + 0.3, 0.22, PD + 0.3, 3, 0.1), std('#23262e', 0.5, 0.35)); slab.position.y = 0.11; cs.add(slab);
+      const fs = rrShape(PW + 0.3, PD + 0.3, 0.28); fs.holes.push((() => { const h = rrShape(PW - 0.2, PD - 0.2, 0.18); const p = new THREE.Path(h.getPoints(16).reverse()); return p; })());
+      const ring = new THREE.Mesh(flat(new THREE.ExtrudeGeometry(fs, { depth: 0.5, bevelEnabled: false })), std('#2c303a', 0.45, 0.4)); ring.position.y = 0.22; cs.add(ring);
+      const add = (g, base, h) => { g.position.y = base; model.add(g); layers.push({ g, base, h }); };
+      const gc = (m) => { const g = new THREE.Group(); g.add(m); return g; };
+      add(caps, 1.18, 0.6); add(sws, 0.74, 0.5); add(gc(plate), 0.66, 0.1); add(pcbG, 0.5, 0.2); add(sd, 0.2, 0.42); add(cs, 0, 0.7);
+    } else {
+      PW = 8.4; PD = 4.4;
+      const slab = (h, col, tex, w) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w || PW, h, PD), tex ? new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9 }) : std(col, 0.9)); m.position.y = h / 2; return m; };
+      const glass = new THREE.Group(); const gb = new THREE.Mesh(new THREE.BoxGeometry(PW * 0.98, 0.03, 1.5), new THREE.MeshStandardMaterial({ color: '#cfe8ff', roughness: 0.2, transparent: true, opacity: 0.3 })); gb.position.y = 0.015; glass.add(gb);
+      const sph = new THREE.SphereGeometry(0.06, 10, 8), bm = new THREE.MeshPhysicalMaterial({ color: '#f4fbff', roughness: 0.05, metalness: 0, transmission: 0.0, clearcoat: 1, envMapIntensity: 2 });
+      const inst = new THREE.InstancedMesh(sph, bm, 900), d = new THREE.Object3D(); for (let i = 0; i < 900; i++) { d.position.set((rnd() - 0.5) * PW * 0.96, 0.05 + rnd() * 0.04, (rnd() - 0.5) * 1.4); d.scale.setScalar(0.6 + rnd() * 0.9); d.updateMatrix(); inst.setMatrixAt(i, d.matrix); } glass.add(inst);
+      const line = new THREE.Group(); const lm = new THREE.Mesh(new THREE.RoundedBoxGeometry(PW * 0.98, 0.16, 1.5, 3, 0.04), std('#f1efe8', 0.7)); lm.position.y = 0.08; line.add(lm);
+      const asf = new THREE.Group(); asf.add(slab(0.55, null, speck('#2a2c31', '#4a4c53', '#17181b', 2600, 3)));
+      const grv = new THREE.Group(); grv.add(slab(0.65, null, speck('#6b6862', '#9a968d', '#4a4742', 2200, 5)));
+      const soil = new THREE.Group(); soil.add(slab(0.75, null, speck('#5a4535', '#7a6048', '#3b2c20', 1800, 4)));
+      const add = (g, base, h) => { g.position.y = base; model.add(g); layers.push({ g, base, h }); };
+      add(glass, 1.95, 0.12); add(line, 1.82, 0.16); add(asf, 1.27, 0.55); add(grv, 0.62, 0.65); add(soil, 0, 0.75);
+    }
+    const n = layers.length, GAP = TUR === 'yol' ? 1.9 : 1.55;
+    layers.forEach((L, i) => { L.off = (n - 1 - i) * GAP; L.t0 = BOSH + i * QADAM; L.prog = 0; });
+
+    // izometrik kamera
+    const dir = new THREE.Vector3(1, 0.82, 1).normalize();
+    function setExplode(t) { layers.forEach(L => { const p = F.clamp01((t - L.t0) / 1.15); L.prog = E.expoOut(p) * (1 + 0.04 * Math.sin(Math.PI * Math.min(1, p))); L.g.position.y = L.base + L.off * L.prog; }); model.updateMatrixWorld(true); }
+    setExplode(1e6); // oxirgi holat o'lchami uchun
+    const bb = new THREE.Box3().setFromObject(model), ctr = bb.getCenter(new THREE.Vector3());
+    cam.position.copy(ctr).addScaledVector(dir, 60); cam.lookAt(ctr); cam.updateMatrixWorld(true);
+    let mnx = 1e9, mxx = -1e9, mny = 1e9, mxy = -1e9;
+    for (let i = 0; i < 8; i++) { const p = new THREE.Vector3(i & 1 ? bb.max.x : bb.min.x, i & 2 ? bb.max.y : bb.min.y, i & 4 ? bb.max.z : bb.min.z).applyMatrix4(cam.matrixWorldInverse); mnx = Math.min(mnx, p.x); mxx = Math.max(mxx, p.x); mny = Math.min(mny, p.y); mxy = Math.max(mxy, p.y); }
+    // model maydoni (kadr ulushi): yorliqlar o'ng ustunda
+    const area = YORLIQ ? (TIK ? { x0: 0.03, x1: 0.62, y0: 0.2, y1: 0.86 } : { x0: 0.04, x1: 0.6, y0: 0.1, y1: 0.92 }) : { x0: 0.06, x1: 0.94, y0: 0.14, y1: 0.9 };
+    const sc = Math.max((mxx - mnx) / ((area.x1 - area.x0) * W), (mxy - mny) / ((area.y1 - area.y0) * H)); // dunyo birligi / piksel
+    const cx = (mnx + mxx) / 2, cy = (mny + mxy) / 2, tx = (area.x0 + area.x1) / 2 * W, ty = (area.y0 + area.y1) / 2 * H;
+    cam.left = cx - sc * tx; cam.right = cam.left + sc * W; cam.top = cy + sc * ty; cam.bottom = cam.top - sc * H; cam.updateProjectionMatrix();
+    cam.position.copy(ctr).addScaledVector(dir, 60); cam.lookAt(ctr);
+    const proj = (g, lp) => { const v = lp.clone(); g.localToWorld(v); v.project(cam); return [(v.x * 0.5 + 0.5) * W, (1 - (v.y * 0.5 + 0.5)) * H]; };
+    // yorliq nuqtasi: qatlamning o'ng (+x) chetidan o'rtasi
+    const anchorL = L => new THREE.Vector3(PW / 2 - 0.1, L.h / 2, 0);
+    const fy0 = layers.map(L => proj(L.g, anchorL(L))[1]);
+    const yA = Math.min(fy0[0], fy0[n - 1]), yB = Math.max(fy0[0], fy0[n - 1]), sp = Math.max((yB - yA) / Math.max(1, n - 1), (TIK ? 120 : 118) * U);
+    const yMid = (fy0[0] + fy0[n - 1]) / 2, finalY = layers.map((L, i) => yMid + (i - (n - 1) / 2) * sp); // yorliqlar teng oraliqda (bir-biriga tegmaydi)
+
+    // fon (radial) — 2D'da emas, sahnada orqa tekislik; shaffof bo'lsa yo'q
+    if (FON) { const c = document.createElement('canvas'); c.width = 64; c.height = 36; const g = c.getContext('2d'); const r = g.createRadialGradient(32, 16, 2, 32, 18, 40); r.addColorStop(0, '#12161f'); r.addColorStop(0.6, '#0a0c10'); r.addColorStop(1, '#05060a'); g.fillStyle = r; g.fillRect(0, 0, 64, 36); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; scene.background = t; }
+    // soya (zamin) — kontakt soyasi
+    const sh = document.createElement('canvas'); sh.width = sh.height = 128; { const g = sh.getContext('2d'); const r = g.createRadialGradient(64, 64, 0, 64, 64, 64); r.addColorStop(0, 'rgba(0,0,0,.55)'); r.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = r; g.fillRect(0, 0, 128, 128); }
+    const shadow = new THREE.Mesh(new THREE.PlaneGeometry(PW * 1.5, PD * 1.9), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(sh), transparent: true, depthWrite: false })); shadow.rotation.x = -Math.PI / 2; shadow.position.y = -0.25; scene.add(shadow);
+
+    // DOM: yorliqlar + SVG chiziqlar
+    const svg = q('.ev-svg'); svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H); const NS = 'http://www.w3.org/2000/svg';
+    const top = q('.ev-top'); top.innerHTML = String(V.sarlavha === undefined ? 'EXPLODED VIEW' : V.sarlavha) + ' <b>· ' + String(n).padStart(2, '0') + '</b>'; top.style.fontSize = Math.round(20 * U) + 'px';
+    const lx = (TIK ? 0.64 : 0.64) * W, lw = (TIK ? 0.33 : 0.31) * W, fs = Math.round((TIK ? 32 : 34) * U);
+    const els = layers.map((L, i) => {
+      const lb = LBL[i] || ['', '']; const d = document.createElement('div'); d.className = 'ev-l'; d.style.cssText = 'left:' + lx + 'px;width:' + lw + 'px;font-size:' + fs + 'px';
+      d.innerHTML = '<div class="n">' + String(i + 1).padStart(2, '0') + '</div><div class="t">' + lb[0] + '</div><div class="d">' + (lb[1] || '') + '</div>'; root.appendChild(d);
+      const pl = document.createElementNS(NS, 'polyline'), dot = document.createElementNS(NS, 'circle'); dot.setAttribute('r', 5 * U); pl.setAttribute('style', 'stroke-width:' + 1.6 * U); svg.appendChild(pl); svg.appendChild(dot);
+      return { d, pl, dot };
+    });
+    if (!YORLIQ) { svg.style.display = 'none'; els.forEach(e => e.d.style.display = 'none'); }
+
+    function renderAt(t) {
+      setExplode(t);
+      shadow.material.opacity = 1; renderer.render(scene, cam);
+      if (!YORLIQ) return;
+      layers.forEach((L, i) => {
+        const e = els[i], pa = F.clamp01((t - (L.t0 + 0.45)) / 0.7), pt = F.E.cubicOut(pa);
+        const a = proj(L.g, anchorL(L)), ly = finalY[i], mx = lx - 26 * U, hh = e.d.offsetHeight || fs * 2.4;
+        e.d.style.top = (ly - hh / 2) + 'px'; e.d.style.opacity = F.E.smooth(F.clamp01(pa * 1.4 - 0.2)); e.d.style.transform = 'translateX(' + ((1 - pt) * 28 * U).toFixed(1) + 'px)';
+        const pts = [[a[0], a[1]], [Math.min(mx - 20 * U, a[0] + 60 * U), ly], [mx, ly]];
+        let len = 0; for (let k = 1; k < 3; k++) len += Math.hypot(pts[k][0] - pts[k - 1][0], pts[k][1] - pts[k - 1][1]);
+        e.pl.setAttribute('points', pts.map(p => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ')); e.pl.style.strokeDasharray = len.toFixed(1); e.pl.style.strokeDashoffset = (len * (1 - pt)).toFixed(1);
+        e.pl.style.opacity = pa > 0 ? 0.85 : 0; e.dot.setAttribute('cx', a[0].toFixed(1)); e.dot.setAttribute('cy', a[1].toFixed(1)); e.dot.style.opacity = pa > 0 ? 1 : 0;
+      });
+    }
+    const tl = gsap.timeline({ paused: true }), st = { t: 0 };
+    tl.to(st, { t: DUR, duration: DUR, ease: 'none', onUpdate: () => renderAt(st.t) }, 0);
+    window.addEventListener('hf-seek', () => renderAt(st.t));
+    renderAt(0);
+    window.__timelines['fx-exploded-view'] = tl;
+    if (window.__hfForceTimelineRebind) window.__hfForceTimelineRebind();
+  });
+  window.__hf = window.__hf || {}; window.__hf.buildReady = window.__hf.buildReady || {};
+  window.__evn = (window.__evn || 0) + 1;
+  window.__hf.buildReady['fx-exploded-view-' + window.__evn] = build;
+})();
+</script>
+</template>
+</body></html>

@@ -1,0 +1,45 @@
+{
+  "$schema": "https://hyperframes.heygen.com/schema/registry-item.json",
+  "name": "3d-mini",
+  "type": "hyperframes:block",
+  "title": "3D Mini",
+  "description": "Three.js yordamida 3D model ko'rsatadigan blok; model va vendor fayllari ham qo'shiladi.",
+  "tags": [
+    "3d",
+    "model",
+    "threejs"
+  ],
+  "author": "hf-registr",
+  "dimensions": {
+    "width": 1920,
+    "height": 1080
+  },
+  "duration": 5.0,
+  "files": [
+    {
+      "path": "3d-mini/3d-mini.html",
+      "target": "compositions/3d-mini/3d-mini.html",
+      "type": "hyperframes:composition"
+    },
+    {
+      "path": "3d-mini/namuna-ekran.mp4",
+      "target": "compositions/3d-mini/namuna-ekran.mp4",
+      "type": "hyperframes:asset"
+    },
+    {
+      "path": "3d-mini/namuna-konus.glb",
+      "target": "compositions/3d-mini/namuna-konus.glb",
+      "type": "hyperframes:asset"
+    },
+    {
+      "path": "3d-mini/vendor/LICENSE-three.txt",
+      "target": "compositions/3d-mini/vendor/LICENSE-three.txt",
+      "type": "hyperframes:asset"
+    },
+    {
+      "path": "3d-mini/vendor/m3-three.js",
+      "target": "compositions/3d-mini/vendor/m3-three.js",
+      "type": "hyperframes:asset"
+    }
+  ]
+}

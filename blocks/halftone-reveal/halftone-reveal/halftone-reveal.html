@@ -1,0 +1,141 @@
+<!doctype html>
+<!--
+  fx-halftone-reveal — nuqta-nuqta (dot-matrix / halftone) ochilish: nuqtalar to'ri bo'ylab kichik nuqtalar o'sib, hammasi birlashib to'liq tasvir/blok ochiladi (reel "dotted card reveal").
+  Faqat 2D canvas, deterministik (kechikish = diagonal | radial | tasodif(seeded) | chap + seeded shovqin; Math.random yo'q).
+  rejim = rasm    — tasvir (rasm yo'li, loyiha ildiziga nisbatan; bo'sh = ichki namuna karta) nuqta maskasi orqali ochiladi, yosh nuqtalar urg'u rangida
+        = qoplama — blok o'zi hech narsa chizmaydi: ustidagi (DOM'da KEYIN ulangan) to'liq qoplama, nuqta teshiklari o'sib tagidagi blokni ochadi.
+  Nuqta o'lchami `katak` (px, 1080p da), `burchak` — to'r burchagi (klassik halftone = 45). `yopish` = true — teskari (nuqtalar kichrayib yo'qoladi).
+  Host (ulash.py: python3 -I ulash.py halftone-reveal --loyiha X --var rejim=rasm --var rasm=assets/r01.jpg):
+  <div data-composition-id="fx-halftone-reveal" data-composition-src="halftone-reveal/halftone-reveal.html" data-variable-values='{"rejim":"rasm","rasm":"assets/r01.jpg"}'
+       data-start="0" data-duration="4" data-track-index="5" data-width="1920" data-height="1080"></div>
+-->
+<html data-composition-variables='[
+  {"id":"rejim","type":"enum","label":"Rejim","default":"rasm","options":[{"value":"rasm","label":"Rasm nuqta maskasi orqali"},{"value":"qoplama","label":"Qoplama (tagidagi blokni ochadi)"}]},
+  {"id":"rasm","type":"string","label":"Rasm yo‘li (bo‘sh = namuna karta)","default":""},
+  {"id":"matn","type":"string","label":"Namuna karta sarlavhasi","default":"HALFTONE"},
+  {"id":"rang","type":"color","label":"Urg‘u (yosh nuqtalar)","default":"#f0a24b"},
+  {"id":"qoplama_rang","type":"color","label":"Qoplama rangi","default":"#05070d"},
+  {"id":"katak","type":"number","label":"Nuqta katagi (px, 1080p da)","default":22,"min":6,"step":2},
+  {"id":"burchak","type":"number","label":"To‘r burchagi (daraja)","default":0,"step":5},
+  {"id":"tur","type":"enum","label":"Ochilish tartibi","default":"diagonal","options":[{"value":"diagonal","label":"Diagonal"},{"value":"radial","label":"Markazdan"},{"value":"tasodif","label":"Tasodifiy (seeded)"},{"value":"chap","label":"Chapdan"}]},
+  {"id":"en","type":"number","label":"Karta eni (% kadr)","default":100,"min":10,"max":100},
+  {"id":"bo","type":"number","label":"Karta balandligi (% kadr)","default":100,"min":10,"max":100},
+  {"id":"radius","type":"number","label":"Karta burchak radiusi (px)","default":0,"min":0},
+  {"id":"kech","type":"number","label":"Boshlanish kechikishi (s)","default":0.2,"step":0.1},
+  {"id":"ochil","type":"number","label":"Ochilish davomi (s)","default":1.6,"step":0.1},
+  {"id":"yopish","type":"boolean","label":"Teskari (yopilish)","default":false},
+  {"id":"davom","type":"number","label":"Davomiylik (s)","default":4,"min":1,"step":0.5},
+  {"id":"urug","type":"number","label":"Seed","default":7}
+]'>
+<head><meta charset="UTF-8" /></head>
+<body>
+<template>
+<style>
+  #root{position:absolute;inset:0;overflow:hidden}
+  .ht-cv{position:absolute;inset:0;width:100%;height:100%;display:block}
+  .ht-yol{display:none}
+</style>
+<div id="root" data-composition-id="fx-halftone-reveal">
+  <canvas class="ht-cv"></canvas>
+  <a class="ht-yol" href="halftone-reveal.html" hidden></a>
+</div>
+<script>
+(function(){
+  const V = window.__hyperframes.getVariables() || {};
+  const q = s => document.querySelector(s);
+  const root = q('#root'); const olc = root.closest('[data-width]');
+  const W = Number(olc && olc.getAttribute('data-width')) || 1920, H = Number(olc && olc.getAttribute('data-height')) || 1080;
+  const num = (v, d) => (v === undefined || v === null || v === '' || isNaN(Number(v))) ? d : Number(v);
+  const bool = (v, d) => (v === undefined || v === null || v === '') ? d : !(v === false || v === 'false' || v === 0);
+  const U = Math.min(W, H) / 1080;
+  const REJIM = V.rejim === 'qoplama' ? 'qoplama' : 'rasm', TUR = V.tur || 'diagonal', DUR = (Number(olc && olc.getAttribute('data-duration')) || num(V.davom, 4)), KECH = num(V.kech, 0.2), OCHIL = Math.max(0.2, num(V.ochil, 1.6));
+  const CELL = Math.max(4, num(V.katak, 22) * U), ANG = num(V.burchak, 0) * Math.PI / 180, YOPISH = bool(V.yopish, false), SEED = num(V.urug, 7);
+  const RANG = V.rang || '#f0a24b', COVER = V.qoplama_rang || '#05070d', RAD = num(V.radius, 0) * U;
+  const CW = Math.round(W * num(V.en, 100) / 100), CH = Math.round(H * num(V.bo, 100) / 100), CX = (W - CW) / 2, CY = (H - CH) / 2;
+  const hash = (i, j) => { let h = (i * 374761393 + j * 668265263 + SEED * 2246822519) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); h ^= h >>> 16; return (h >>> 0) / 4294967296; };
+  const smooth = t => t * t * (3 - 2 * t), clamp01 = t => Math.max(0, Math.min(1, t)), cubicOut = t => 1 - Math.pow(1 - t, 3);
+  const hex = h => { const m = /^#?([0-9a-f]{6})$/i.exec(h || ''); const n = m ? parseInt(m[1], 16) : 0xf0a24b; return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
+  const aRGB = hex(RANG);
+  const aYol = q('.ht-yol'); const yol = p => /^(https?:|data:|blob:|\/)/.test(p) ? p : new URL(p, document.baseURI).href;
+
+  const build = (async () => {
+    try { await document.fonts.load("900 40px 'Inter'"); await document.fonts.load("500 20px 'JetBrains Mono'"); } catch (e) {}
+    const out = q('.ht-cv'); out.width = W; out.height = H; const g = out.getContext('2d');
+    // manba tasvir (karta o'lchamida)
+    const src = document.createElement('canvas'); src.width = CW; src.height = CH; const sg = src.getContext('2d');
+    if (REJIM === 'rasm') {
+      let ok = false;
+      if (V.rasm) { try { const im = new Image(); im.src = yol(V.rasm); await im.decode(); const k = Math.max(CW / im.naturalWidth, CH / im.naturalHeight), w = im.naturalWidth * k, h = im.naturalHeight * k; sg.drawImage(im, (CW - w) / 2, (CH - h) / 2, w, h); ok = true; } catch (e) { console.warn('[fx-halftone-reveal] rasm ochilmadi:', V.rasm); } }
+      if (!ok) { // ichki namuna karta
+        const gr = sg.createLinearGradient(0, 0, CW, CH); gr.addColorStop(0, '#16224a'); gr.addColorStop(0.55, '#3b2a7a'); gr.addColorStop(1, '#c2456b'); sg.fillStyle = gr; sg.fillRect(0, 0, CW, CH);
+        sg.fillStyle = 'rgba(255,255,255,.08)'; for (let i = 0; i < 9; i++) { sg.beginPath(); sg.arc(CW * (0.1 + 0.11 * i), CH * 0.8, CH * (0.08 + 0.02 * (i % 4)), 0, 7); sg.fill(); }
+        sg.fillStyle = RANG; sg.beginPath(); sg.arc(CW * 0.82, CH * 0.28, Math.min(CW, CH) * 0.13, 0, 7); sg.fill();
+        sg.fillStyle = '#f2efe6'; sg.font = '900 ' + Math.round(CH * 0.2) + 'px Inter,sans-serif'; sg.textBaseline = 'middle'; sg.fillText(String(V.matn || 'HALFTONE'), CW * 0.07, CH * 0.5);
+        sg.fillStyle = 'rgba(242,239,230,.7)'; sg.font = '500 ' + Math.round(CH * 0.045) + 'px JetBrains Mono,monospace'; sg.fillText('dot-matrix reveal', CW * 0.075, CH * 0.68);
+      }
+    }
+    const mask = document.createElement('canvas'); mask.width = W; mask.height = H; const mg = mask.getContext('2d');
+    const tmp = document.createElement('canvas'); tmp.width = W; tmp.height = H; const tg = tmp.getContext('2d');
+
+    // to'r: karta markaziga nisbatan burilgan; katak markazlari
+    const cc = Math.cos(ANG), ss = Math.sin(ANG), R = Math.hypot(CW, CH) / 2 + CELL, N = Math.ceil(R / CELL);
+    const cells = [];
+    for (let j = -N; j <= N; j++) for (let i = -N; i <= N; i++) {
+      const lx = i * CELL, ly = j * CELL, x = lx * cc - ly * ss, y = lx * ss + ly * cc; // karta markaziga nisbatan
+      if (Math.abs(x) > CW / 2 + CELL * 0.75 || Math.abs(y) > CH / 2 + CELL * 0.75) continue;
+      let d;
+      if (TUR === 'radial') d = Math.hypot(x / (CW / 2), y / (CH / 2)) / 1.42;
+      else if (TUR === 'tasodif') d = hash(i, j);
+      else if (TUR === 'chap') d = (x + CW / 2) / CW;
+      else d = ((x + CW / 2) / CW * 0.6 + (y + CH / 2) / CH * 0.4);
+      d = clamp01(d * 0.8 + hash(i + 91, j - 17) * 0.2);
+      cells.push([x + CW / 2, y + CH / 2, d]);
+    }
+    const SPREAD = 0.7, MAXR = CELL * 0.74;
+    function rr(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
+
+    function renderAt(t) {
+      let P = clamp01((t - KECH) / OCHIL); if (YOPISH) P = 1 - P;
+      g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, W, H);
+      if (REJIM === 'qoplama' && P >= 1) return;
+      mg.clearRect(0, 0, W, H);
+      const prog = cells.map(c => cubicOut(clamp01((P * (1 + SPREAD) - c[2] * SPREAD))));
+      const sc = 0.97 + 0.03 * smooth(P); // karta yengil o'sadi
+      if (REJIM === 'qoplama') {
+        // qoplama: butun maydon to'ldiriladi, teshiklar destination-out
+        tg.setTransform(1, 0, 0, 1, 0, 0); tg.clearRect(0, 0, W, H); tg.globalCompositeOperation = 'source-over'; tg.fillStyle = COVER; if (RAD) { rr(tg, CX, CY, CW, CH, RAD); tg.fill(); } else tg.fillRect(CX, CY, CW, CH);
+        tg.globalCompositeOperation = 'destination-out'; tg.fillStyle = '#000';
+        cells.forEach((c, k) => { const r = prog[k] * MAXR; if (r > 0.3) { tg.beginPath(); tg.arc(CX + c[0], CY + c[1], r, 0, 6.2832); tg.fill(); } });
+        tg.globalCompositeOperation = 'source-over';
+        // yosh teshiklar chetida urg'u halqasi (faqat o'sayotganlar)
+        g.drawImage(tmp, 0, 0);
+        g.lineWidth = Math.max(1, 1.6 * U);
+        cells.forEach((c, k) => { const p = prog[k]; if (p > 0.04 && p < 0.97) { g.strokeStyle = 'rgba(' + aRGB[0] + ',' + aRGB[1] + ',' + aRGB[2] + ',' + (0.85 * (1 - p)).toFixed(3) + ')'; g.beginPath(); g.arc(CX + c[0], CY + c[1], prog[k] * MAXR + 0.6, 0, 6.2832); g.stroke(); } });
+        return;
+      }
+      // rasm: tasvir nuqta maskasi orqali + yosh nuqtalar urg'u rangida
+      g.save(); g.translate(W / 2, H / 2); g.scale(sc, sc); g.translate(-W / 2, -H / 2);
+      mg.fillStyle = '#fff';
+      cells.forEach((c, k) => { const r = prog[k] * MAXR; if (r > 0.3) { mg.beginPath(); mg.arc(CX + c[0], CY + c[1], r, 0, 6.2832); mg.fill(); } });
+      tg.setTransform(1, 0, 0, 1, 0, 0); tg.globalCompositeOperation = 'source-over'; tg.clearRect(0, 0, W, H); tg.drawImage(src, CX, CY);
+      tg.globalCompositeOperation = 'destination-in'; tg.drawImage(mask, 0, 0); tg.globalCompositeOperation = 'source-over';
+      if (RAD) { g.beginPath(); rr(g, CX, CY, CW, CH, RAD); g.clip(); }
+      g.drawImage(tmp, 0, 0);
+      // urg'u tusi: nuqta yosh ekan (prog kichik) urg'u rangida, keyin tasvirga o'tadi
+      cells.forEach((c, k) => { const p = prog[k]; const a = (1 - smooth(clamp01(p * 1.5))) * 0.95; if (a > 0.01 && p > 0) { g.fillStyle = 'rgba(' + aRGB[0] + ',' + aRGB[1] + ',' + aRGB[2] + ',' + a.toFixed(3) + ')'; g.beginPath(); g.arc(CX + c[0], CY + c[1], p * MAXR, 0, 6.2832); g.fill(); } });
+      g.restore();
+    }
+    const tl = gsap.timeline({ paused: true }), st = { t: 0 };
+    tl.to(st, { t: DUR, duration: DUR, ease: 'none', onUpdate: () => renderAt(st.t) }, 0);
+    window.addEventListener('hf-seek', () => renderAt(st.t));
+    renderAt(0);
+    window.__timelines['fx-halftone-reveal'] = tl;
+    if (window.__hfForceTimelineRebind) window.__hfForceTimelineRebind();
+  })();
+  window.__hf = window.__hf || {}; window.__hf.buildReady = window.__hf.buildReady || {};
+  window.__htn = (window.__htn || 0) + 1;
+  window.__hf.buildReady['fx-halftone-reveal-' + window.__htn] = build;
+})();
+</script>
+</template>
+</body></html>

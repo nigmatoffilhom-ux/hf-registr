@@ -1,0 +1,190 @@
+<!doctype html>
+<!--
+  fx-zarra-morf — N ta nuqta tartibsiz bulutdan shaklga "assemble" bo'ladi, keyin shakldan shaklga o'tadi (shar -> yurak -> tor -> matn ...). Additive nuqtalar + bloom.
+  Three.js r160 lokal (../3d-mini/vendor) + ../3d-ortak/fx3d.js. Hamma nuqta joyi CPU'da har kadr faqat vaqtdan hisoblanadi (seeded PRNG, Math.random yo'q, rAF yo'q).
+  shakllar: "shar|yurak|tor|kub|galaktika|matn:NEGA?" ('|' yoki ',' bilan ajratiladi). Matn: Montserrat 900 dan piksel namunalash.
+  CHIQISH QIYMATI (HUD uchun): window.FX.zarraMorf[<host id>].qiymat(t) -> {soni, jami, foiz, shakl, indeks}  (t = blok ichidagi lokal soniya).
+    soni = hozir ko'rinayotgan nuqtalar (0 -> jami, boshida ketma-ket yonadi), foiz = joriy shaklga yig'ilganlik 0..1. Blokning o'z HUD paneli: hud=true.
+    Boshqa blok/skript HUD'ni o'zi chizsa: FX.zarraMorf["u-zarra-morf-1"].qiymat(st.t). root'da ham data-zm-soni / data-zm-foiz yoziladi.
+  Host (ulash.py: python3 -I ulash.py zarra-morf --loyiha X --var "shakllar=shar|yurak|matn:NEGA"):
+  <div data-composition-id="fx-zarra-morf" data-composition-src="zarra-morf/zarra-morf.html" data-variable-values='{"shakllar":"shar|yurak|tor","soni":6000}'
+       data-start="0" data-duration="9" data-track-index="5" data-width="1920" data-height="1080"></div>
+-->
+<html data-composition-variables='[
+  {"id":"shakllar","type":"string","label":"Shakllar (| bilan): shar|yurak|tor|kub|galaktika|matn:XYZ","default":"shar|yurak|matn:NEGA?"},
+  {"id":"soni","type":"number","label":"Nuqtalar soni","default":6000,"min":200,"step":500},
+  {"id":"rang","type":"color","label":"Rang (past)","default":"#ffa94d"},
+  {"id":"rang2","type":"color","label":"Rang 2 (yuqori)","default":"#3fb8ff"},
+  {"id":"uchish","type":"number","label":"O‘tish davomi (s)","default":1.8,"step":0.1},
+  {"id":"ushlash","type":"number","label":"Shaklda turish (s)","default":1.2,"step":0.1},
+  {"id":"boshlash","type":"number","label":"Boshlanish kechikishi (s)","default":0.5,"step":0.1},
+  {"id":"orbit","type":"number","label":"Aylanish (marta/s)","default":0.07,"step":0.01},
+  {"id":"olcham","type":"number","label":"O‘lcham (1 = kadrning ~62%)","default":1,"min":0.2,"step":0.1},
+  {"id":"nuqta","type":"number","label":"Nuqta o‘lchami (px, 1080p da)","default":3.2,"step":0.2},
+  {"id":"bloom","type":"number","label":"Bloom kuchi","default":1,"min":0,"step":0.1},
+  {"id":"fon","type":"boolean","label":"Qora fon","default":true},
+  {"id":"hud","type":"boolean","label":"HUD (nuqtalar soni)","default":true},
+  {"id":"hud_yozuv","type":"string","label":"HUD yozuvi","default":"NUQTALAR"},
+  {"id":"davom","type":"number","label":"Davomiylik (s)","default":9,"min":1,"step":0.5},
+  {"id":"urug","type":"number","label":"Seed","default":11}
+]'>
+<head><meta charset="UTF-8" /></head>
+<body>
+<template>
+<style>
+  #root{position:absolute;inset:0;overflow:hidden}
+  .zm-out{position:absolute;inset:0;width:100%;height:100%;display:block}
+  .zm-gl{position:absolute;left:0;top:0;width:8px;height:8px;opacity:0;pointer-events:none}
+  .zm-hud{position:absolute;left:5%;bottom:6%;font-family:'JetBrains Mono',ui-monospace,monospace;color:#f2efe6;letter-spacing:.04em;line-height:1.5;
+    padding:.8em 1.1em;border:1px solid rgba(240,162,75,.55);background:rgba(4,6,12,.55);min-width:15em}
+  .zm-hud i{position:absolute;width:.8em;height:.8em;border-color:#f0a24b;border-style:solid;border-width:0}
+  .zm-hud i.a{left:-1px;top:-1px;border-left-width:2px;border-top-width:2px}.zm-hud i.b{right:-1px;bottom:-1px;border-right-width:2px;border-bottom-width:2px}
+  .zm-hud .k{color:rgba(242,239,230,.6);font-size:.78em}.zm-hud .v{color:#f0a24b;font-weight:700}
+  .zm-hud .r{display:flex;justify-content:space-between;gap:1.6em}
+  .zm-bar{height:3px;background:rgba(242,239,230,.18);margin-top:.5em}.zm-bar b{display:block;height:100%;width:0;background:#f0a24b}
+  .fx-tik .zm-hud{left:50%;transform:translateX(-50%);bottom:8%}
+</style>
+<div id="root" data-composition-id="fx-zarra-morf">
+  <canvas class="zm-out"></canvas>
+  <canvas class="zm-gl"></canvas>
+  <div class="zm-hud"><i class="a"></i><i class="b"></i>
+    <div class="r"><span class="k zm-hk">NUQTALAR</span><span class="v zm-hs">0</span></div>
+    <div class="r"><span class="k">SHAKL</span><span class="v zm-hh">-</span></div>
+    <div class="zm-bar"><b class="zm-hb"></b></div></div>
+</div>
+<script class="zm-vendor" src="../3d-mini/vendor/m3-three.js"></script>
+<script class="zm-ortak" src="../3d-ortak/fx3d.js"></script>
+<script>
+(function(){
+  const V = window.__hyperframes.getVariables() || {};
+  const q = s => document.querySelector(s);
+  const root = q('#root');
+  const olc = root.closest('[data-width]');
+  const W = Number(olc && olc.getAttribute('data-width')) || 1920, H = Number(olc && olc.getAttribute('data-height')) || 1080;
+  const hostId = (olc && olc.id) || 'zarra-morf';
+  const num = (v, d) => (v === undefined || v === null || v === '' || isNaN(Number(v))) ? d : Number(v);
+  const bool = (v, d) => (v === undefined || v === null || v === '') ? d : !(v === false || v === 'false' || v === 0);
+  const N = Math.round(num(V.soni, 6000)), DUR = (Number(olc && olc.getAttribute('data-duration')) || num(V.davom, 9)), SEED = num(V.urug, 11);
+  const UCH = num(V.uchish, 1.8), USH = num(V.ushlash, 1.2), BOSH = num(V.boshlash, 0.5), ORB = num(V.orbit, 0.07), OLC = num(V.olcham, 1);
+  const NUQTA = num(V.nuqta, 3.2) * Math.min(W, H) / 1080 * (W < H ? 1.5 : 1), BLOOM = num(V.bloom, 1), FON = bool(V.fon, true), HUD = bool(V.hud, true);
+  const RAW = String(V.shakllar || 'shar|yurak|matn:NEGA?'); const NOMLAR = (RAW.indexOf('|') >= 0 ? RAW.split('|') : RAW.split(',')).map(s => s.trim()).filter(Boolean);
+  root.classList.add(W > H * 1.2 ? 'fx-keng' : (W < H * 0.8 ? 'fx-tik' : 'fx-kv'));
+  const hud = q('.zm-hud'); hud.style.fontSize = Math.round(Math.min(W, H) * 0.027) + 'px'; if (!HUD) hud.style.display = 'none';
+  q('.zm-hk').textContent = String(V.hud_yozuv || 'NUQTALAR');
+  const fmt = n => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+
+  const waitFor = (sel, getter) => new Promise((res, rej) => { const g = getter(); if (g) return res(g); const el = q(sel); if (el) { el.addEventListener('load', () => res(getter())); el.addEventListener('error', rej); } else rej(new Error('skript yo\'q')); });
+  const build = waitFor('.zm-vendor', () => window.M3THREE).then(THREE => waitFor('.zm-ortak', () => window.FX3D).then(F => ({ THREE, F }))).then(async ({ THREE, F }) => {
+    try { await document.fonts.load("900 200px 'Montserrat'"); } catch (e) {}
+    const rnd = F.prng(SEED), TAU = Math.PI * 2;
+    const fov0 = 32 * Math.PI / 180, camD0 = 1.5 / Math.tan(fov0 / 2) / Math.min(1, W / H) / (0.62 * OLC), TW = Math.min(5.4, 1.7 * Math.tan(fov0 / 2) * camD0 * (W / H)); // matn kengligi: kadrning ~85% (ko'pi bilan 5,4)
+
+    // ---- Shakllar: har biri N nuqta (Float32Array 3N), yaqin nuqtalar yaqin indeksda (tartiblangan -> o'tish "burama" bo'lib chiroyli) ----
+    function sortKey(P) { // y-qatlam, keyin azimut
+      const idx = Array.from({ length: N }, (_, i) => i);
+      const key = i => Math.floor((P[i * 3 + 1] + 1.6) * 7) * 100 + (Math.atan2(P[i * 3 + 2], P[i * 3]) + Math.PI) / TAU * 99;
+      idx.sort((a, b) => key(a) - key(b)); const o = new Float32Array(N * 3);
+      idx.forEach((s, d) => { o[d * 3] = P[s * 3]; o[d * 3 + 1] = P[s * 3 + 1]; o[d * 3 + 2] = P[s * 3 + 2]; }); return o;
+    }
+    function sample(nom) {
+      const P = new Float32Array(N * 3);
+      const put = (i, x, y, z) => { P[i * 3] = x; P[i * 3 + 1] = y; P[i * 3 + 2] = z; };
+      if (nom === 'shar') { for (let i = 0; i < N; i++) { const y = 1 - 2 * (i + 0.5) / N, r = Math.sqrt(1 - y * y), a = i * 2.399963; put(i, r * Math.cos(a) * 1.15, y * 1.15, r * Math.sin(a) * 1.15); } }
+      else if (nom === 'tor') { for (let i = 0; i < N; i++) { const a = rnd() * TAU, b = rnd() * TAU; put(i, (1 + 0.36 * Math.cos(b)) * Math.cos(a), 0.36 * Math.sin(b), (1 + 0.36 * Math.cos(b)) * Math.sin(a)); } }
+      else if (nom === 'kub') { for (let i = 0; i < N; i++) { const f = Math.floor(rnd() * 6), u = rnd() * 2 - 1, v = rnd() * 2 - 1, s = 0.9; const c = [[s, u * s, v * s], [-s, u * s, v * s], [u * s, s, v * s], [u * s, -s, v * s], [u * s, v * s, s], [u * s, v * s, -s]][f]; put(i, c[0], c[1], c[2]); } }
+      else if (nom === 'galaktika') { for (let i = 0; i < N; i++) { const arm = i % 3, t = Math.pow(rnd(), 0.7), r = 0.1 + t * 1.3, a = arm * TAU / 3 + t * 5 + (rnd() - 0.5) * 0.5 * (0.3 + t); put(i, r * Math.cos(a), (rnd() - 0.5) * 0.14 * (1.1 - t), r * Math.sin(a)); } }
+      else if (nom === 'yurak') {
+        const f = (x, y, z) => { const a = x * x + 2.25 * y * y + z * z - 1; return a * a * a - x * x * z * z * z - 0.1125 * y * y * z * z * z; };
+        let n = 0, guard = 0; while (n < N && guard++ < N * 400) { const x = (rnd() * 2 - 1) * 1.2, y = (rnd() * 2 - 1) * 0.75, z = (rnd() * 2 - 1) * 1.3; const v = f(x, y, z); if (v <= 0 && v > -0.03) put(n++, x * 1.0, z * 0.95 - 0.1, y * 1.25); }
+      } else if (nom.indexOf('matn:') === 0) {
+        const s = nom.slice(5) || 'NEGA'; const c = document.createElement('canvas'); c.width = 1200; c.height = 300; const g = c.getContext('2d');
+        let fs = 220; g.font = "900 " + fs + "px 'Montserrat','Inter',sans-serif"; const mw = g.measureText(s).width; if (mw > 1100) { fs = Math.floor(fs * 1100 / mw); g.font = "900 " + fs + "px 'Montserrat','Inter',sans-serif"; }
+        g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(s, 600, 150);
+        const d = g.getImageData(0, 0, 1200, 300).data, px = []; let x0 = 1e9, x1 = -1e9;
+        for (let y = 0; y < 300; y += 2) for (let x = 0; x < 1200; x += 2) if (d[(y * 1200 + x) * 4 + 3] > 128) { px.push(x, y); x0 = Math.min(x0, x); x1 = Math.max(x1, x); }
+        const k = TW / Math.max(1, x1 - x0), cx = (x0 + x1) / 2, m = px.length / 2;
+        for (let i = 0; i < N; i++) { const j = Math.floor(rnd() * m) * 2; put(i, (px[j] + rnd() * 2 - cx) * k, -(px[j + 1] + rnd() * 2 - 150) * k, (rnd() - 0.5) * 0.14); }
+      } else { for (let i = 0; i < N; i++) put(i, rnd() * 2 - 1, rnd() * 2 - 1, rnd() * 2 - 1); }
+      return sortKey(P);
+    }
+    // boshlang'ich bulut: sharsimon qobiq + shovqin
+    const S0 = (() => { const P = new Float32Array(N * 3); for (let i = 0; i < N; i++) { const a = rnd() * TAU, c = rnd() * 2 - 1, r = 2.2 + rnd() * 1.4, s = Math.sqrt(1 - c * c); P[i * 3] = r * s * Math.cos(a); P[i * 3 + 1] = r * c * 0.8; P[i * 3 + 2] = r * s * Math.sin(a); } return sortKey(P); })();
+    const SH = [S0].concat(NOMLAR.map(sample));
+    const dl = new Float32Array(N), sw = new Float32Array(N), ap = new Float32Array(N), sz = new Float32Array(N);
+    for (let i = 0; i < N; i++) { dl[i] = rnd(); sw[i] = (0.4 + rnd() * 1.1) * (rnd() < 0.5 ? -1 : 1); sz[i] = 0.6 + rnd() * 0.9; ap[i] = i / N; }
+
+    const out = q('.zm-out'); out.width = W; out.height = H; const g2 = out.getContext('2d');
+    const gl = q('.zm-gl'); gl.width = W; gl.height = H;
+    const renderer = new THREE.WebGLRenderer({ canvas: gl, alpha: true, antialias: false, preserveDrawingBuffer: true, premultipliedAlpha: true });
+    renderer.setPixelRatio(1); renderer.setSize(W, H, false); renderer.setClearColor(0x000000, 0);
+    const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(32, W / H, 0.1, 100);
+    const geo = new THREE.BufferGeometry(); const pos = new Float32Array(N * 3), col = new Float32Array(N * 3), siz = new Float32Array(N);
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('aCol', new THREE.BufferAttribute(col, 3)); geo.setAttribute('aSz', new THREE.BufferAttribute(siz, 1));
+    const fov = THREE.MathUtils.degToRad(camera.fov), camD = 1.5 / Math.tan(fov / 2) / Math.min(1, W / H) / (0.62 * OLC);
+    const mat = new THREE.ShaderMaterial({
+      transparent: true, depthWrite: false, depthTest: false, blending: THREE.CustomBlending, blendEquation: THREE.AddEquation, blendSrc: THREE.OneFactor, blendDst: THREE.OneFactor, blendSrcAlpha: THREE.OneFactor, blendDstAlpha: THREE.OneFactor,
+      uniforms: { uPx: { value: NUQTA }, uD: { value: camD } },
+      vertexShader: `attribute vec3 aCol; attribute float aSz; uniform float uPx; uniform float uD; varying vec3 vC;
+        void main(){ vec4 mv = modelViewMatrix*vec4(position,1.); gl_Position = projectionMatrix*mv; gl_PointSize = max(0.0, uPx*aSz*uD/max(0.1,-mv.z)); vC = aCol; }`,
+      fragmentShader: `varying vec3 vC; void main(){ float d = length(gl_PointCoord-0.5)*2.0; float a = smoothstep(1.0,0.15,d); vec3 c = vC*a; gl_FragColor = vec4(c, max(max(c.r,c.g),c.b)); }`,
+    });
+    const pts = new THREE.Points(geo, mat); pts.frustumCulled = false; scene.add(pts);
+    const c1 = new THREE.Color(V.rang || '#ffa94d'), c2 = new THREE.Color(V.rang2 || '#3fb8ff');
+    const bgc = document.createElement('canvas'); bgc.width = 64; bgc.height = 36; const bg = bgc.getContext('2d');
+    const rg = bg.createRadialGradient(32, 16, 2, 32, 18, 40); rg.addColorStop(0, '#0a1222'); rg.addColorStop(0.6, '#04060c'); rg.addColorStop(1, '#020309'); bg.fillStyle = rg; bg.fillRect(0, 0, 64, 36);
+    const G = F.glowTayyor(W, H);
+    const nS = SH.length - 1, SLOT = UCH + USH;
+    const APP = 1.0; // nuqtalar ketma-ket yonadigan vaqt
+
+    // t -> {indeks (0..nS-1: maqsad shakl), p (o'tish 0..1), soni, foiz}
+    function holat(t) {
+      const tt = t - BOSH; const k = Math.max(0, Math.min(nS - 1, Math.floor(tt / SLOT)));
+      const ptr = (tt - k * SLOT) / UCH; const p = tt < 0 ? 0 : Math.min(1, ptr);
+      const soni = N * F.E.smooth(F.clamp01(t / APP));
+      return { k, p, soni, foiz: tt < 0 ? 0 : (k + p) / nS };
+    }
+    window.FX = window.FX || {}; window.FX.zarraMorf = window.FX.zarraMorf || {};
+    window.FX.zarraMorf[hostId] = { jami: N, shakllar: NOMLAR, qiymat: t => { const h = holat(t); return { soni: Math.round(h.soni), jami: N, foiz: h.foiz, shakl: NOMLAR[h.k], indeks: h.k }; } };
+
+    function renderAt(t) {
+      const h = holat(t), A = SH[h.k], B = SH[h.k + 1], E = F.E;
+      const isT = n => NOMLAR[n] && NOMLAR[n].indexOf('matn:') === 0;
+      const tw = isT(h.k) ? E.smooth(h.p) : (isT(h.k - 1) ? 1 - E.smooth(h.p) : 0); // maqsad = NOMLAR[k], manba = NOMLAR[k-1]  // matn shaklida kameraga yuzlanadi
+      const yaw = (2 * Math.PI * ORB * t + 0.3) * (1 - tw);
+      const cy = Math.cos(yaw), sy = Math.sin(yaw);
+      for (let i = 0; i < N; i++) {
+        const loc = F.clamp01((h.p - dl[i] * 0.45) / 0.55), e = E.inOut(loc), mv = Math.sin(Math.PI * loc);
+        const a = sw[i] * mv * 1.1, ca = Math.cos(a), sa = Math.sin(a);
+        const ax = A[i * 3], ay = A[i * 3 + 1], az = A[i * 3 + 2], bx = B[i * 3], by = B[i * 3 + 1], bz = B[i * 3 + 2];
+        let x = ax + (bx - ax) * e, y = ay + (by - ay) * e, z = az + (bz - az) * e;
+        const xr = x * ca + z * sa; z = -x * sa + z * ca; x = xr; y += mv * 0.18 * sw[i];
+        // dunyo burilishi (guruh): y atrofida
+        pos[i * 3] = x * cy + z * sy; pos[i * 3 + 1] = y; pos[i * 3 + 2] = -x * sy + z * cy;
+        const hot = mv * 0.4, k = F.clamp01((y + 1.2) / 2.4);
+        col[i * 3] = c1.r + (c2.r - c1.r) * k + hot; col[i * 3 + 1] = c1.g + (c2.g - c1.g) * k + hot; col[i * 3 + 2] = c1.b + (c2.b - c1.b) * k + hot;
+        const ap2 = E.smooth(F.clamp01((t / APP * 1.05 - ap[i]) / 0.05));
+        siz[i] = sz[i] * ap2 * (1 + mv * 0.5);
+      }
+      geo.attributes.position.needsUpdate = true; geo.attributes.aCol.needsUpdate = true; geo.attributes.aSz.needsUpdate = true;
+      camera.position.set(0, camD * 0.22, camD); camera.lookAt(0, 0, 0);
+      renderer.render(scene, camera);
+      g2.setTransform(1, 0, 0, 1, 0, 0); g2.clearRect(0, 0, W, H); if (FON) g2.drawImage(bgc, 0, 0, W, H);
+      F.glow(g2, gl, W, H, G, { a1: 0.9 * BLOOM, a2: 1.0 * BLOOM });
+      const qv = window.FX.zarraMorf[hostId].qiymat(t);
+      root.setAttribute('data-zm-soni', qv.soni); root.setAttribute('data-zm-foiz', qv.foiz.toFixed(3));
+      if (HUD) { q('.zm-hs').textContent = fmt(qv.soni) + ' / ' + fmt(N); q('.zm-hh').textContent = String(NOMLAR[h.k]).replace(/^matn:/, '"') + (String(NOMLAR[h.k]).indexOf('matn:') === 0 ? '"' : ''); q('.zm-hb').style.width = (qv.foiz * 100).toFixed(1) + '%'; }
+    }
+    const tl = gsap.timeline({ paused: true }), st = { t: 0 };
+    tl.to(st, { t: DUR, duration: DUR, ease: 'none', onUpdate: () => renderAt(st.t) }, 0);
+    window.addEventListener('hf-seek', () => renderAt(st.t));
+    renderAt(0);
+    window.__timelines['fx-zarra-morf'] = tl;
+    if (window.__hfForceTimelineRebind) window.__hfForceTimelineRebind();
+  });
+  window.__hf = window.__hf || {}; window.__hf.buildReady = window.__hf.buildReady || {};
+  window.__zmn = (window.__zmn || 0) + 1;
+  window.__hf.buildReady['fx-zarra-morf-' + window.__zmn] = build;
+})();
+</script>
+</template>
+</body></html>

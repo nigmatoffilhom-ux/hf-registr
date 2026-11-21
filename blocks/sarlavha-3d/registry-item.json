@@ -1,0 +1,25 @@
+{
+  "$schema": "https://hyperframes.heygen.com/schema/registry-item.json",
+  "name": "sarlavha-3d",
+  "type": "hyperframes:block",
+  "title": "Sarlavha 3D",
+  "description": "Three.js asosidagi 3D sarlavha animatsiyasi; internet va CDN kerak.",
+  "tags": [
+    "title",
+    "text",
+    "3d"
+  ],
+  "author": "hf-registr",
+  "dimensions": {
+    "width": 1920,
+    "height": 1080
+  },
+  "duration": 5.0,
+  "files": [
+    {
+      "path": "sarlavha-3d/sarlavha-3d.html",
+      "target": "compositions/sarlavha-3d/sarlavha-3d.html",
+      "type": "hyperframes:composition"
+    }
+  ]
+}

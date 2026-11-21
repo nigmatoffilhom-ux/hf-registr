@@ -1,0 +1,25 @@
+{
+  "$schema": "https://hyperframes.heygen.com/schema/registry-item.json",
+  "name": "subtitr-kinetik",
+  "type": "hyperframes:block",
+  "title": "Subtitr Kinetik",
+  "description": "Kinetik matn harakati bilan subtitr chiqaruvchi blok.",
+  "tags": [
+    "captions",
+    "text",
+    "kinetic"
+  ],
+  "author": "hf-registr",
+  "dimensions": {
+    "width": 1920,
+    "height": 1080
+  },
+  "duration": 8.0,
+  "files": [
+    {
+      "path": "subtitr-kinetik/subtitr-kinetik.html",
+      "target": "compositions/subtitr-kinetik/subtitr-kinetik.html",
+      "type": "hyperframes:composition"
+    }
+  ]
+}

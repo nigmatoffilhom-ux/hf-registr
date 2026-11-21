@@ -1,0 +1,25 @@
+{
+  "$schema": "https://hyperframes.heygen.com/schema/registry-item.json",
+  "name": "geo",
+  "type": "hyperframes:block",
+  "title": "Geo",
+  "description": "Geometrik chizma va matematik shakllarni ko'rsatadigan blok.",
+  "tags": [
+    "geometry",
+    "math",
+    "diagram"
+  ],
+  "author": "hf-registr",
+  "dimensions": {
+    "width": 1920,
+    "height": 1080
+  },
+  "duration": 8.0,
+  "files": [
+    {
+      "path": "geometriya/geo-blok.html",
+      "target": "compositions/geometriya/geo-blok.html",
+      "type": "hyperframes:composition"
+    }
+  ]
+}

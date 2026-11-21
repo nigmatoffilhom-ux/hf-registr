@@ -1,0 +1,74 @@
+<!doctype html>
+<!--
+  fx-formula — KaTeX (lokal, 0.16.11, internetsiz) formulani QISM-MA-QISM paydo qiladi. Qismlar belgisi: TeX ichida [[ ... ]].
+  Misol: "[[E]] = [[m]]\,[[c^2]]"  yoki  "[[\sum_{k=1}^{n} k]] = [[\frac{n(n+1)}{2}]]".
+  Talab (ulash.py o'zi qo'yadi): formula/vendor/katex.min.js + katex.min.css (+fonts), formula/formula.js, formula/formula.css.
+  <div data-composition-id="fx-formula" data-composition-src="formula/formula.html"
+       data-variable-values='{"tex":"[[E]] = [[mc^2]]","ramka":"urgu"}'
+       data-start="0" data-duration="4" data-track-index="9" data-width="1920" data-height="1080"></div>
+-->
+<html data-composition-variables='[
+  {"id":"tex","type":"string","label":"TeX ([[qism]] belgisi bilan)","default":"[[E]] = [[m]] [[c^2]]"},
+  {"id":"olcham","type":"number","label":"Shrift o`lchami (px, maksimal; kenglikka sig`adi)","default":120,"min":20,"step":2},
+  {"id":"rang","type":"color","label":"Formula rangi","default":"#f2efe6"},
+  {"id":"urgu","type":"color","label":"Ramka / urg`u rangi","default":"#f0a24b"},
+  {"id":"ramka","type":"enum","label":"Ramka","default":"yoq","options":[{"value":"yoq","label":"Yo`q"},{"value":"urgu","label":"Urg`u rangli"},{"value":"oq","label":"Oq"}]},
+  {"id":"kirish","type":"enum","label":"Kirish","default":"qism","options":[{"value":"qism","label":"Qism-ma-qism (blur+ko`tarilish)"},{"value":"maska","label":"Chapdan o`ngga ochilish"},{"value":"fade","label":"Fade"}]},
+  {"id":"har","type":"number","label":"Qismlar orasidagi kechikish (s)","default":0.22,"min":0,"step":0.02},
+  {"id":"kechikish","type":"number","label":"Boshlanish kechikishi (s)","default":0.2,"min":0,"step":0.1},
+  {"id":"joy","type":"enum","label":"Joy","default":"markaz","options":[{"value":"markaz","label":"Markaz"},{"value":"past","label":"Pastki uchdan bir"},{"value":"yuqori","label":"Yuqori uchdan bir"}]},
+  {"id":"fon","type":"boolean","label":"O`z foni","default":false},
+  {"id":"chiqish","type":"number","label":"Chiqish uzunligi (s, 0 = chiqmaydi)","default":0.35,"min":0,"step":0.05}
+]'>
+<head><meta charset="UTF-8" /></head>
+<body>
+<template>
+<style>
+  #root{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+  .fm-bg{position:absolute;inset:0;background:#05070d}
+  .fm-w{position:absolute;left:0;right:0;display:flex;justify-content:center;align-items:center}
+  .fm-w.markaz{top:0;bottom:0}.fm-w.past{top:62%;bottom:8%}.fm-w.yuqori{top:8%;bottom:62%}
+  .fm-box{position:relative;max-width:88%;padding:.35em .7em;border:0 solid transparent}
+  .fm-box.ramka{border-width:2px;border-radius:.12em;box-shadow:0 0 .8em rgba(0,0,0,.35)}
+  .fm-f{line-height:1.15;white-space:nowrap}
+</style>
+<div id="root" data-composition-id="fx-formula">
+  <div class="fm-bg"></div>
+  <div class="fm-w"><div class="fm-box"><div class="fm-f"></div></div></div>
+</div>
+<script>
+(function(){
+  const V = (window.__hyperframes && window.__hyperframes.getVariables && window.__hyperframes.getVariables()) || {};
+  const root = document.querySelector('#root'), _o = root.closest('[data-width]');
+  const q = s => root.querySelector(s);
+  const FW = Number(_o && _o.getAttribute('data-width')) || root.offsetWidth || 1920, FH = Number(_o && _o.getAttribute('data-height')) || root.offsetHeight || 1080;
+  const FMT = FW / FH < 0.8 ? 'tik' : (FW / FH < 1.25 ? 'kv' : 'keng'); root.classList.add('fx-' + FMT);
+  const D = Number(_o && _o.getAttribute('data-duration')) || 4;
+  const ur = V.urgu || '#f0a24b';
+  if (!(V.fon === true || V.fon === 'true')) q('.fm-bg').style.display = 'none';
+  const W = q('.fm-w'); W.classList.add(V.joy === 'past' ? 'past' : V.joy === 'yuqori' ? 'yuqori' : 'markaz');
+  const box = q('.fm-box'), fe = q('.fm-f');
+  const rk = V.ramka === 'urgu' ? ur : V.ramka === 'oq' ? '#f2efe6' : null;
+  if (rk) { box.classList.add('ramka'); box.style.borderColor = rk; }
+  fe.style.color = V.rang || '#f2efe6';
+  let fs = Number(V.olcham) || 120;
+  const maxFs = FMT === 'tik' ? Math.min(fs, FW * 0.1) : fs;
+  fe.style.fontSize = maxFs + 'px';
+  const fm = FX.formula.yasa(fe, V.tex == null ? '[[E]] = [[m]] [[c^2]]' : String(V.tex), { displayMode: true });
+  const ch = V.chiqish == null ? 0.35 : Math.max(0, Number(V.chiqish) || 0), t0 = Number(V.kechikish) || 0;
+  const build = () => {
+    // kenglikka sig'dirish (ramka bilan birga ~88%)
+    const avail = FW * 0.88 - (rk ? 0.7 * 2 * maxFs * 0.4 : 0), ka = fe.querySelector('.katex');
+    let f = maxFs, g = 0;
+    if (ka) while (ka.scrollWidth > avail && f > 14 && g++ < 80) { f *= 0.96; fe.style.fontSize = f + 'px'; }
+    const tl = gsap.timeline({ paused: true });
+    if (rk) tl.fromTo(box, { opacity: 0, scale: 0.94 }, { opacity: 1, scale: 1, duration: 0.45, ease: 'power3.out' }, t0);
+    FX.formula.jonlantir(tl, fm, t0 + (rk ? 0.2 : 0), { kirish: V.kirish || 'qism', dur: 0.55, har: V.har != null ? Number(V.har) : 0.22 });
+    if (ch > 0) tl.to(W, { opacity: 0, duration: ch, ease: 'power1.in' }, Math.max(0.5, D - ch));
+    window.__timelines['fx-formula'] = tl;
+  };
+  (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(build);
+})();
+</script>
+</template>
+</body></html>

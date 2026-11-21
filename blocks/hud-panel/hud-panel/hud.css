@@ -1,0 +1,13 @@
+/* hud.css — FX.hud panel stillari (hud-panel va bob-shablon bloklari uchun umumiy). Rang: --urgu (odatiy #f0a24b). */
+.hud-p{position:relative;box-sizing:border-box;padding:.95em 1.15em 1em;background:rgba(7,10,17,.66);border:1px solid rgba(240,162,75,.26);
+  font-family:'JetBrains Mono',ui-monospace,'Noto Sans',monospace;color:#cfd3dc;text-transform:uppercase;letter-spacing:.05em;overflow:visible}
+.hud-p>i{position:absolute;width:.95em;height:.95em;border:0 solid var(--urgu,#f0a24b)}
+.hud-p>i.a{left:-1px;top:-1px;border-left-width:2px;border-top-width:2px}
+.hud-p>i.b{right:-1px;top:-1px;border-right-width:2px;border-top-width:2px}
+.hud-p>i.c{left:-1px;bottom:-1px;border-left-width:2px;border-bottom-width:2px}
+.hud-p>i.d{right:-1px;bottom:-1px;border-right-width:2px;border-bottom-width:2px}
+.hud-s{display:flex;justify-content:space-between;align-items:center;font-size:.74em;letter-spacing:.14em;color:rgba(207,211,220,.5);margin-bottom:.6em;white-space:nowrap}
+.hud-r{display:flex;justify-content:space-between;align-items:baseline;gap:1em;line-height:1.5;white-space:nowrap}
+.hud-k{font-size:.8em;color:rgba(207,211,220,.72);letter-spacing:.08em}
+.hud-v{text-transform:none;font-weight:700;color:var(--urgu,#f0a24b);font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.hud-c{display:inline-block;width:.5em;height:.9em;background:var(--urgu,#f0a24b);vertical-align:-.1em;margin-left:.35em;opacity:0}

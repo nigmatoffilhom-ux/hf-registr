@@ -1,0 +1,146 @@
+<!doctype html>
+<!--
+  fx-sarlavha-kinetik — kinetik CSS sarlavha: so'zlar birma-bir (maskadan / zarb bilan / harfma-harf / ag'darilib) chiqadi,
+  urg'u so'z ortida rangli marker yuguradi, butun sarlavha sekin "nafas oladi", oxirida so'zlar yuqoriga chiqib ketadi.
+  Matn kadr kengligiga o'zi sig'adi (9:16 / 1:1 da ham), kerak bo'lsa bir necha qatorga bo'linadi.
+  Host'ga ulash (yoki: hyperframes add sarlavha-kinetik)
+  <div data-composition-id="fx-sarlavha-kinetik" data-composition-src="sarlavha-kinetik/sarlavha-kinetik.html"
+       data-variable-values='{"matn":"Tunda yo&#39;l chizig&#39;i ko&#39;rinadimi?","urgu_soz":"2","ustki":"SAVOL"}'
+       data-start="0" data-duration="4" data-track-index="3" data-width="1920" data-height="1080"></div>
+  Shrift: ulash.py (yoki shriftlar/ichiga.py) host index.html ga lokal @font-face qo'yadi — internet kerak emas.
+-->
+<html data-composition-variables='[
+  {"id":"matn","type":"string","label":"Sarlavha (so`zlar bo`sh joy bilan)","default":"Tunda yo`l chizig`i ko`rinadimi?"},
+  {"id":"ustki","type":"string","label":"Ustki kichik yozuv (bo`sh = yo`q)","default":""},
+  {"id":"urgu_soz","type":"string","label":"Urg`u so`z(lar) tartib raqami, vergul bilan (1 dan)","default":"2"},
+  {"id":"urgu","type":"color","label":"Urg`u rangi","default":"#ffd166"},
+  {"id":"rang","type":"color","label":"Matn rangi","default":"#ffffff"},
+  {"id":"kirish","type":"enum","label":"Kirish","default":"maska","options":[
+    {"value":"maska","label":"Maskadan pastdan chiqadi"},{"value":"zarb","label":"Zarb (kattadan tushadi)"},
+    {"value":"harf","label":"Harfma-harf"},{"value":"agdarish","label":"3D ag`darilib"}]},
+  {"id":"shrift","type":"enum","label":"Shrift","default":"Montserrat","options":[
+    {"value":"Montserrat","label":"Montserrat 900"},{"value":"Unbounded","label":"Unbounded 900"},
+    {"value":"Bebas Neue","label":"Bebas Neue"},{"value":"Oswald","label":"Oswald 700"},{"value":"Inter","label":"Inter 800"}]},
+  {"id":"olcham","type":"number","label":"Shrift (px, maksimal; o`zi kichrayadi)","default":150,"min":40,"step":4},
+  {"id":"joy","type":"enum","label":"Joy","default":"markaz","options":[
+    {"value":"markaz","label":"Markaz"},{"value":"chap","label":"Chap (chapga tekis)"},{"value":"past","label":"Pastki uchdan bir"}]},
+  {"id":"qadam","type":"number","label":"So`zlar orasidagi kechikish (s)","default":0.16,"min":0.02,"step":0.02},
+  {"id":"kechikish","type":"number","label":"Boshlanish (s)","default":0.2,"min":0,"step":0.1},
+  {"id":"chiqish","type":"number","label":"Chiqish vaqti (s, 0 = chiqmaydi)","default":0,"min":0,"step":0.1},
+  {"id":"fon","type":"boolean","label":"To`q fon (aks holda shaffof)","default":false}
+]'>
+<head><meta charset="UTF-8" /></head>
+<body>
+<template>
+<style>
+  #root{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+  /* Shrift nomlari ochiq yozilgan: ichiga.py / ulash.py shularni topib lokal @font-face qo'yadi */
+  .sk2-m{font-family:'Montserrat','Noto Sans',sans-serif;font-weight:900}
+  .sk2-u{font-family:'Unbounded','Noto Sans',sans-serif;font-weight:900}
+  .sk2-b{font-family:'Bebas Neue','Oswald','Noto Sans',sans-serif;font-weight:400}
+  .sk2-o{font-family:'Oswald','Noto Sans',sans-serif;font-weight:700}
+  .sk2-i{font-family:'Inter','Noto Sans',sans-serif;font-weight:800}
+  .sk2-fon{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 45%,#16213b 0%,#080c18 60%,#03050a 100%);display:none}
+  .sk2-joy{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:0 8%}
+  .sk2-joy.chap{align-items:flex-start}
+  .sk2-joy.past{justify-content:flex-end;padding-bottom:16%}
+  .sk2-blok{position:relative;display:flex;flex-direction:column;align-items:inherit;max-width:100%}
+  .sk2-ustki{display:block;overflow:hidden;margin-bottom:.9em;font-family:'Inter','Noto Sans',sans-serif;font-weight:800;letter-spacing:.32em;font-size:30px;white-space:nowrap;padding-left:.32em}
+  .sk2-ustki>span{display:block;color:var(--urgu,#ffd166)}
+  .sk2-qator{position:relative;display:flex;flex-wrap:wrap;justify-content:center;align-items:baseline;gap:0 .24em;line-height:1.04;letter-spacing:-.02em;color:var(--rang,#fff);max-width:100%}
+  .sk2-joy.chap .sk2-qator{justify-content:flex-start}
+  .sk2-s{position:relative;display:inline-block;white-space:nowrap;padding:.04em .06em .1em}
+  .sk2-s.maska{overflow:hidden}
+  .sk2-i1{position:relative;display:inline-block;z-index:1}
+  .sk2-h{display:inline-block}
+  .sk2-mark{position:absolute;left:-.08em;right:-.08em;top:.12em;bottom:.06em;background:var(--urgu,#ffd166);transform-origin:0% 50%;z-index:0;border-radius:.06em}
+  .sk2-s.urg .sk2-i1{color:#0a0e18}
+  .sk2-chiziq{display:block;height:.07em;width:2.2em;margin-top:.28em;background:var(--urgu,#ffd166);transform-origin:0% 50%}
+  .sk2-joy:not(.chap) .sk2-chiziq{transform-origin:50% 50%}
+</style>
+<div id="root" data-composition-id="fx-sarlavha-kinetik">
+  <div class="sk2-fon"></div>
+  <div class="sk2-joy"><div class="sk2-blok">
+    <span class="sk2-ustki"><span></span></span>
+    <div class="sk2-qator"></div>
+    <span class="sk2-chiziq"></span>
+  </div></div>
+</div>
+<script>
+(function(){
+  const V = (window.__hyperframes && window.__hyperframes.getVariables && window.__hyperframes.getVariables()) || {};
+  const q = s => document.querySelector(s); // runtime shu nusxa ildiziga cheklaydi
+  const num = (v, d) => (v === undefined || v === null || v === '' || isNaN(Number(v))) ? d : Number(v);
+  const root = q('#root'), _o = root.closest('[data-width]');
+  const FW = Number(_o && _o.getAttribute('data-width')) || root.offsetWidth || 1920, FH = Number(_o && _o.getAttribute('data-height')) || root.offsetHeight || 1080;
+  const FMT = FW / FH < 0.8 ? 'tik' : (FW / FH < 1.25 ? 'kv' : 'keng'); root.classList.add('fx-' + FMT);
+  const SH = { 'Montserrat': ['sk2-m', 900], 'Unbounded': ['sk2-u', 900], 'Bebas Neue': ['sk2-b', 400], 'Oswald': ['sk2-o', 700], 'Inter': ['sk2-i', 800] };
+  const shr = SH[V.shrift] ? V.shrift : 'Montserrat';
+  const qator = q('.sk2-qator'), joy = q('.sk2-joy'), ustki = q('.sk2-ustki'), chiziq = q('.sk2-chiziq');
+  qator.classList.add(SH[shr][0]);
+  if (V.joy === 'chap' || V.joy === 'past') joy.classList.add(V.joy);
+  if (V.fon === true || V.fon === 'true') q('.sk2-fon').style.display = 'block';
+  // ' va ` → oʻ/gʻ uchun ʻ (U+02BB); qolgan apostrof ʼ (U+02BC)
+  const norm = s => String(s || '').replace(/([oOgG])['`‘’]/g, '$1ʻ').replace(/['`’]/g, 'ʼ');
+  const sozlar = norm(V.matn != null ? V.matn : 'Tunda yoʻl chizigʻi koʻrinadimi?').trim().split(/\s+/).filter(Boolean);
+  const URG = String(V.urgu_soz == null ? '2' : V.urgu_soz).split(',').map(x => parseInt(x, 10) - 1).filter(x => x >= 0);
+  const KIR = ['maska', 'zarb', 'harf', 'agdarish'].indexOf(V.kirish) >= 0 ? V.kirish : 'maska';
+  if (V.ustki) ustki.firstChild.textContent = norm(V.ustki); else ustki.style.display = 'none';
+
+  const S = sozlar.map((w, i) => {
+    const s = document.createElement('span'); s.className = 'sk2-s' + (KIR === 'maska' ? ' maska' : '') + (URG.indexOf(i) >= 0 ? ' urg' : '');
+    let mark = null;
+    if (URG.indexOf(i) >= 0) { mark = document.createElement('span'); mark.className = 'sk2-mark'; s.appendChild(mark); }
+    const ic = document.createElement('span'); ic.className = 'sk2-i1';
+    const harflar = [];
+    if (KIR === 'harf') [...w].forEach(ch => { const h = document.createElement('span'); h.className = 'sk2-h'; h.textContent = ch; ic.appendChild(h); harflar.push(h); });
+    else ic.textContent = w;
+    s.appendChild(ic); qator.appendChild(s);
+    return { s, ic, mark, harflar };
+  });
+
+  const QADAM = num(V.qadam, 0.16), T0 = num(V.kechikish, 0.2), OUT = num(V.chiqish, 0);
+  const tl = gsap.timeline({ paused: true });
+
+  const qur = () => {
+    // Sig'dirish: eng uzun so'z va butun blok kadrga sig'guncha kichraytiriladi (kenglik 84%, balandlik 58% / 9:16 da 46%)
+    const maxW = FW * (FMT === 'keng' ? 0.8 : 0.84), maxH = FH * (FMT === 'tik' ? 0.46 : 0.58);
+    let fs = num(V.olcham, 150);
+    const qoy = f => { qator.style.fontSize = f + 'px'; ustki.style.fontSize = Math.max(18, Math.min(34, f * 0.22)) + 'px'; chiziq.style.fontSize = f + 'px'; };
+    qoy(fs);
+    for (let i = 0; i < 40; i++) {
+      const enK = Math.max(...S.map(o => o.s.offsetWidth)), bal = qator.offsetHeight;
+      if (enK <= maxW && bal <= maxH && qator.scrollWidth <= maxW + 1) break;
+      fs *= 0.94; qoy(fs);
+    }
+    gsap.set(qator, { transformPerspective: 1200 });
+    if (V.ustki) tl.fromTo(ustki.firstChild, { yPercent: 115 }, { yPercent: 0, duration: 0.6, ease: 'expo.out' }, T0);
+    const t1 = T0 + (V.ustki ? 0.25 : 0);
+    S.forEach((o, i) => {
+      const t = t1 + i * QADAM;
+      if (KIR === 'maska') tl.fromTo(o.ic, { yPercent: 108, rotation: 4 }, { yPercent: 0, rotation: 0, duration: 0.7, ease: 'expo.out' }, t);
+      else if (KIR === 'zarb') tl.fromTo(o.s, { scale: 2.3, opacity: 0, filter: 'blur(10px)' }, { scale: 1, opacity: 1, filter: 'blur(0px)', duration: 0.45, ease: 'power4.out' }, t);
+      else if (KIR === 'agdarish') tl.fromTo(o.s, { rotationX: -95, opacity: 0, transformOrigin: '50% 100% -40px' }, { rotationX: 0, opacity: 1, duration: 0.7, ease: 'back.out(1.6)' }, t);
+      else o.harflar.forEach((h, k) => tl.fromTo(h, { yPercent: 60, opacity: 0, rotation: (k % 2 ? 8 : -8) }, { yPercent: 0, opacity: 1, rotation: 0, duration: 0.42, ease: 'back.out(2.2)' }, t + k * 0.03));
+      if (o.mark) tl.fromTo(o.mark, { scaleX: 0 }, { scaleX: 1, duration: 0.5, ease: 'expo.inOut' }, t + 0.25);
+      // urg'u so'z ichidagi matn marker ustida qora bo'lib qoladi; marker tushguncha oq
+      if (o.mark) tl.fromTo(o.ic, { color: getComputedStyle(qator).color }, { color: '#0a0e18', duration: 0.2, ease: 'none' }, t + 0.45);
+    });
+    const tEnd = t1 + (S.length - 1) * QADAM + 0.7;
+    tl.fromTo(chiziq, { scaleX: 0 }, { scaleX: 1, duration: 0.6, ease: 'expo.out' }, tEnd - 0.3);
+    // Tirik qolishi uchun: blok sekin kattalashadi (nafas)
+    const dur = OUT > 0 ? OUT : Math.max(tEnd + 2, 4);
+    tl.fromTo(q('.sk2-blok'), { scale: 0.985 }, { scale: 1.03, duration: Math.max(1, dur), ease: 'sine.inOut' }, 0);
+    if (OUT > 0) {
+      tl.to(S.map(o => o.s), { yPercent: -60, opacity: 0, duration: 0.4, ease: 'power3.in', stagger: 0.05 }, OUT);
+      tl.to([ustki, chiziq], { opacity: 0, duration: 0.3, ease: 'power2.in' }, OUT);
+    }
+    window.__timelines['fx-sarlavha-kinetik'] = tl;
+  };
+  // So'z o'lchami shrift yuklangach o'lchanadi; timeline qurilgach ro'yxatga yoziladi
+  const yukla = document.fonts && document.fonts.load ? Promise.all([document.fonts.load(SH[shr][1] + ' 100px "' + shr + '"'), document.fonts.load('800 30px "Inter"')]).catch(() => 0) : Promise.resolve();
+  yukla.then(() => (document.fonts && document.fonts.ready) || 0).then(qur);
+})();
+</script>
+</template>
+</body></html>

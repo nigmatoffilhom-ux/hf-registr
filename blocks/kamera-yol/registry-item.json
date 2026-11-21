@@ -1,0 +1,40 @@
+{
+  "$schema": "https://hyperframes.heygen.com/schema/registry-item.json",
+  "name": "kamera-yol",
+  "type": "hyperframes:block",
+  "title": "Kamera Yol",
+  "description": "3D kamera yo'li: yol=orbit|dolly|tepa|aralash yoki kalit nuqtalar JSON (CatmullRom)",
+  "tags": [
+    "3d",
+    "camera",
+    "motion"
+  ],
+  "author": "hf-registr",
+  "dimensions": {
+    "width": 1920,
+    "height": 1080
+  },
+  "duration": 8.0,
+  "files": [
+    {
+      "path": "3d-mini/vendor/LICENSE-three.txt",
+      "target": "compositions/3d-mini/vendor/LICENSE-three.txt",
+      "type": "hyperframes:asset"
+    },
+    {
+      "path": "3d-mini/vendor/m3-three.js",
+      "target": "compositions/3d-mini/vendor/m3-three.js",
+      "type": "hyperframes:asset"
+    },
+    {
+      "path": "3d-ortak/fx3d.js",
+      "target": "compositions/3d-ortak/fx3d.js",
+      "type": "hyperframes:asset"
+    },
+    {
+      "path": "kamera-yol/kamera-yol.html",
+      "target": "compositions/kamera-yol/kamera-yol.html",
+      "type": "hyperframes:composition"
+    }
+  ]
+}

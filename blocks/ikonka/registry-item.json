@@ -1,0 +1,30 @@
+{
+  "$schema": "https://hyperframes.heygen.com/schema/registry-item.json",
+  "name": "ikonka",
+  "type": "hyperframes:block",
+  "title": "Ikonka",
+  "description": "Lokal SVG belgilar to'plamidan foydalanadigan ikonka bloki.",
+  "tags": [
+    "icon",
+    "svg",
+    "overlay"
+  ],
+  "author": "hf-registr",
+  "dimensions": {
+    "width": 1920,
+    "height": 1080
+  },
+  "duration": 3.0,
+  "files": [
+    {
+      "path": "ikonkalar/LICENSE.md",
+      "target": "compositions/ikonkalar/LICENSE.md",
+      "type": "hyperframes:asset"
+    },
+    {
+      "path": "ikonkalar/ikonka.html",
+      "target": "compositions/ikonkalar/ikonka.html",
+      "type": "hyperframes:composition"
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "$schema": "https://hyperframes.heygen.com/schema/registry-item.json",
+  "name": "sarlavha-kinetik",
+  "type": "hyperframes:block",
+  "title": "Sarlavha Kinetik",
+  "description": "Kinetik tipografiya bilan sarlavha ochilish bloki.",
+  "tags": [
+    "title",
+    "text",
+    "kinetic"
+  ],
+  "author": "hf-registr",
+  "dimensions": {
+    "width": 1920,
+    "height": 1080
+  },
+  "duration": 4.0,
+  "files": [
+    {
+      "path": "sarlavha-kinetik/sarlavha-kinetik.html",
+      "target": "compositions/sarlavha-kinetik/sarlavha-kinetik.html",
+      "type": "hyperframes:composition"
+    }
+  ]
+}

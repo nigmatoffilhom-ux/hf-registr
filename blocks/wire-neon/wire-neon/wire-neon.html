@@ -1,0 +1,119 @@
+<!doctype html>
+<!--
+  fx-wire-neon — neon wireframe 3D shakl: qora fon, setka-pol (chetga so'nadi), sekin orbit kamera, chizilib chiqish (pastdan yuqoriga, oq-issiq old chiziq), bloom.
+  Three.js r160 lokal (../3d-mini/vendor/m3-three.js) + ../3d-ortak/fx3d.js. Qalin neon chiziq = ekran fazosida kengaytirilgan quad (WebGL 1px chiziq emas).
+  Bloom = 2D canvas'da kichraytirilgan nusxalar additive (kichik sarflanadi, shader/ qatlamisiz). Deterministik: har kadr faqat vaqt (proxy tween) — Math.random yo'q, requestAnimationFrame yo'q.
+  shakl: kub | shar | tor | konus | huni | mobius | tolqin | spiral | parametrik (fx/fy/fz — u,v in [0,1], with(Math) ichida). Vergul bilan bir nechta: "kub,shar,tor" (qatorda).
+  Host (ulash.py bilan: python3 -I ulash.py wire-neon --loyiha X --var shakl=huni):
+  <div data-composition-id="fx-wire-neon" data-composition-src="wire-neon/wire-neon.html" data-variable-values='{"shakl":"huni","rang":"#ffa94d","rang2":"#3fb8ff"}'
+       data-start="0" data-duration="6" data-track-index="5" data-width="1920" data-height="1080"></div>
+-->
+<html data-composition-variables='[
+  {"id":"shakl","type":"string","label":"Shakl (kub, shar, tor, konus, huni, mobius, tolqin, spiral, parametrik; vergul bilan bir nechta)","default":"huni"},
+  {"id":"rang","type":"color","label":"Rang (past)","default":"#ffa94d"},
+  {"id":"rang2","type":"color","label":"Rang 2 (yuqori)","default":"#3fb8ff"},
+  {"id":"pol","type":"boolean","label":"Setka-pol","default":true},
+  {"id":"fon","type":"boolean","label":"Qora fon (false = shaffof)","default":true},
+  {"id":"orbit","type":"number","label":"Orbit (marta/s)","default":0.05,"step":0.01},
+  {"id":"balandlik","type":"number","label":"Kamera balandligi (daraja)","default":16,"step":1},
+  {"id":"olcham","type":"number","label":"O‘lcham (1 = kadrning ~80%)","default":1,"min":0.2,"step":0.1},
+  {"id":"kenglik","type":"number","label":"Chiziq qalinligi (px, 1080p da)","default":2.2,"step":0.2},
+  {"id":"bloom","type":"number","label":"Bloom kuchi","default":1,"min":0,"step":0.1},
+  {"id":"kirish","type":"enum","label":"Kirish","default":"chizilish","options":[{"value":"chizilish","label":"Chizilib chiqadi"},{"value":"yoq","label":"Animatsiyasiz"}]},
+  {"id":"davom","type":"number","label":"Davomiylik (s)","default":6,"min":1,"step":0.5},
+  {"id":"urug","type":"number","label":"Seed","default":5},
+  {"id":"fx","type":"string","label":"parametrik: x(u,v)","default":""},
+  {"id":"fy","type":"string","label":"parametrik: y(u,v)","default":""},
+  {"id":"fz","type":"string","label":"parametrik: z(u,v)","default":""}
+]'>
+<head><meta charset="UTF-8" /></head>
+<body>
+<template>
+<style>
+  #root{position:absolute;inset:0;overflow:hidden}
+  .wn-out{position:absolute;inset:0;width:100%;height:100%;display:block}
+  .wn-gl{position:absolute;left:0;top:0;width:8px;height:8px;opacity:0;pointer-events:none}
+</style>
+<div id="root" data-composition-id="fx-wire-neon">
+  <canvas class="wn-out"></canvas>
+  <canvas class="wn-gl"></canvas>
+</div>
+<script class="wn-vendor" src="../3d-mini/vendor/m3-three.js"></script>
+<script class="wn-ortak" src="../3d-ortak/fx3d.js"></script>
+<script>
+(function(){
+  const V = window.__hyperframes.getVariables() || {};
+  const q = s => document.querySelector(s);
+  const root = q('#root');
+  const olc = root.closest('[data-width]');
+  const W = Number(olc && olc.getAttribute('data-width')) || 1920, H = Number(olc && olc.getAttribute('data-height')) || 1080;
+  const A = () => window.FX3D;
+  const num = (v, d) => (v === undefined || v === null || v === '' || isNaN(Number(v))) ? d : Number(v);
+  const bool = (v, d) => (v === undefined || v === null || v === '') ? d : !(v === false || v === 'false' || v === 0);
+  const DUR = (Number(olc && olc.getAttribute('data-duration')) || num(V.davom, 6)), SEED = num(V.urug, 5), OLCHAM = num(V.olcham, 1), ORB = num(V.orbit, 0.05), ELEV = num(V.balandlik, 16) * Math.PI / 180;
+  const FON = bool(V.fon, true), POL = bool(V.pol, true), BLOOM = num(V.bloom, 1), KIRISH = V.kirish || 'chizilish';
+  const SHAKL = String(V.shakl || 'huni').split(',').map(s => s.trim()).filter(Boolean);
+  const RANG = V.rang || '#ffa94d', RANG2 = V.rang2 || '#3fb8ff';
+  const KEN = num(V.kenglik, 2.2) * (H >= W ? W : H) / 1080;
+  const cls = W > H * 1.2 ? 'fx-keng' : (W < H * 0.8 ? 'fx-tik' : 'fx-kv'); root.classList.add(cls);
+
+  const waitFor = (sel, getter) => new Promise((res, rej) => {
+    const g = getter(); if (g) return res(g);
+    const el = q(sel); if (el) { el.addEventListener('load', () => res(getter())); el.addEventListener('error', rej); } else rej(new Error('skript yo\'q: ' + sel));
+  });
+  const build = waitFor('.wn-vendor', () => window.M3THREE).then(THREE => waitFor('.wn-ortak', () => window.FX3D).then(F => ({ THREE, F }))).then(({ THREE, F }) => {
+    const out = q('.wn-out'); out.width = W; out.height = H; const g2 = out.getContext('2d');
+    const gl = q('.wn-gl'); gl.width = W; gl.height = H;
+    const renderer = new THREE.WebGLRenderer({ canvas: gl, alpha: true, antialias: false, preserveDrawingBuffer: true, premultipliedAlpha: true });
+    renderer.setPixelRatio(1); renderer.setSize(W, H, false); renderer.setClearColor(0x000000, 0);
+    const scene = new THREE.Scene(); const camera = new THREE.PerspectiveCamera(32, W / H, 0.1, 200);
+
+    const c1 = new THREE.Color(RANG), c2 = new THREE.Color(RANG2);
+    const grad = (x, y, z) => c1.clone().lerp(c2, Math.max(0, Math.min(1, (y + 1) / 2)));
+    const n = SHAKL.length, gap = 2.5, meshes = [];
+    SHAKL.forEach((nm, i) => {
+      const pairs = F.shape(THREE, nm, { fx: V.fx, fy: V.fy, fz: V.fz });
+      const m = F.fatLines(THREE, pairs, { W, H, kenglik: KEN, rangFn: grad, seed: SEED + i, fog: [6, 40], ordAxis: 1 });
+      m.position.x = (i - (n - 1) / 2) * gap; scene.add(m); meshes.push(m);
+    });
+    let floor = null;
+    if (POL) {
+      const S = 16, pr = F.gridPairs(S, 32, 16, -1.25);
+      const base = new THREE.Color('#2f7fb0');
+      floor = F.fatLines(THREE, pr, { W, H, kenglik: Math.max(1, KEN * 0.55), seed: 1, reveal: false, hot: 0, fog: [10, 60], rangFn: (x, y, z) => base.clone().multiplyScalar(Math.pow(Math.max(0, 1 - Math.hypot(x, z) / S), 1.8)) });
+      floor.renderOrder = -1; scene.add(floor);
+    }
+    const Rg = Math.max(1.15, (n - 1) * gap / 2 + 1.05);
+    const fov = THREE.MathUtils.degToRad(camera.fov);
+    const camD = Rg / Math.tan(fov / 2) / Math.min(1, W / H) / (0.82 * OLCHAM);
+    const bgc = document.createElement('canvas'); bgc.width = 64; bgc.height = 36; const bg = bgc.getContext('2d');
+    const rg = bg.createRadialGradient(32, 15, 2, 32, 18, 40); rg.addColorStop(0, '#0b1426'); rg.addColorStop(0.6, '#04060c'); rg.addColorStop(1, '#020309'); bg.fillStyle = rg; bg.fillRect(0, 0, 64, 36);
+    const G = F.glowTayyor(W, H);
+
+    function renderAt(t) {
+      const e = F.E, p = KIRISH === 'yoq' ? 1 : F.clamp01((t - 0.15) / 2.0);
+      meshes.forEach((m, i) => { const pp = KIRISH === 'yoq' ? 1 : F.clamp01((t - 0.15 - i * 0.35) / 2.0); m.material.uniforms.uProg.value = e.cubicOut(pp); m.material.uniforms.uPulse.value = 0.12 * Math.sin(t * 2.1 + i); m.rotation.y = t * 0.1 + i * 0.7; });
+      if (floor) floor.material.uniforms.uA.value = KIRISH === 'yoq' ? 1 : e.smooth(F.clamp01(t / 1.2));
+      const dolly = KIRISH === 'yoq' ? 1 : 1 + 0.45 * (1 - e.expoOut(F.clamp01(t / 2.2)));
+      const az = 0.7 + 2 * Math.PI * ORB * t, r = camD * dolly;
+      camera.position.set(Math.sin(az) * Math.cos(ELEV) * r, Math.sin(ELEV) * r + (1 - dolly) * 0, Math.cos(az) * Math.cos(ELEV) * r);
+      camera.lookAt(0, -0.1, 0);
+      renderer.render(scene, camera);
+      g2.setTransform(1, 0, 0, 1, 0, 0); g2.clearRect(0, 0, W, H);
+      if (FON) g2.drawImage(bgc, 0, 0, W, H);
+      F.glow(g2, gl, W, H, G, { a1: 0.85 * BLOOM, a2: 0.95 * BLOOM });
+    }
+    const tl = gsap.timeline({ paused: true }), st = { t: 0 };
+    tl.to(st, { t: DUR, duration: DUR, ease: 'none', onUpdate: () => renderAt(st.t) }, 0);
+    window.addEventListener('hf-seek', () => renderAt(st.t));
+    renderAt(0);
+    window.__timelines['fx-wire-neon'] = tl;
+    if (window.__hfForceTimelineRebind) window.__hfForceTimelineRebind();
+  });
+  window.__hf = window.__hf || {}; window.__hf.buildReady = window.__hf.buildReady || {};
+  window.__wnn = (window.__wnn || 0) + 1;
+  window.__hf.buildReady['fx-wire-neon-' + window.__wnn] = build;
+})();
+</script>
+</template>
+</body></html>

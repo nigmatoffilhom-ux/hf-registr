@@ -1,0 +1,25 @@
+{
+  "$schema": "https://hyperframes.heygen.com/schema/registry-item.json",
+  "name": "halftone-reveal",
+  "type": "hyperframes:block",
+  "title": "Halftone Reveal",
+  "description": "nuqta-nuqta ochilish: rejim=rasm (rasm nuqta maskasi orqali) | qoplama (tagidagi blokni ochadigan teshikli qoplama)",
+  "tags": [
+    "reveal",
+    "halftone",
+    "transition"
+  ],
+  "author": "hf-registr",
+  "dimensions": {
+    "width": 1920,
+    "height": 1080
+  },
+  "duration": 4.0,
+  "files": [
+    {
+      "path": "halftone-reveal/halftone-reveal.html",
+      "target": "compositions/halftone-reveal/halftone-reveal.html",
+      "type": "hyperframes:composition"
+    }
+  ]
+}

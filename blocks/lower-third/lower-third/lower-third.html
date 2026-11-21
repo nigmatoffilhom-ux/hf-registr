@@ -1,0 +1,77 @@
+<!doctype html>
+<!--
+  fx-lower-third — ism + lavozim plashkasi (lower-third).
+  Host'ga ulash:
+  <div data-composition-id="fx-lower-third" data-composition-src="lower-third/lower-third.html"
+       data-variable-values='{"ism":"Ism Familiya","lavozim":"Lavozim","chiqish":4.2}'
+       data-start="2" data-duration="5" data-track-index="8" data-width="1920" data-height="1080"></div>
+-->
+<html data-composition-variables='[
+  {"id":"ism","type":"string","label":"Ism","default":"Ism Familiya"},
+  {"id":"lavozim","type":"string","label":"Lavozim","default":"Lavozim yoki izoh"},
+  {"id":"urgu","type":"color","label":"Urg`u rangi","default":"#ffd166"},
+  {"id":"joy","type":"enum","label":"Joy","default":"chap","options":[{"value":"chap","label":"Pastki chap"},{"value":"ong","label":"Pastki o`ng"}]},
+  {"id":"chiqish","type":"number","label":"Chiqish vaqti (s, 0 = chiqmaydi)","default":4.2,"min":0,"step":0.1}
+]'>
+<head><meta charset="UTF-8" /></head>
+<body>
+<template>
+<style>
+  #root{position:absolute;inset:0;pointer-events:none;font-family:Inter,Arial,sans-serif}
+  .lt-box{position:absolute;bottom:150px;left:110px;display:flex;align-items:stretch;gap:0;max-width:62%}
+  .lt-box.ong{left:auto;right:110px;flex-direction:row-reverse}
+  .fx-tik .lt-box{left:6%;bottom:23%;max-width:88%}.fx-tik .lt-box.ong{left:auto;right:6%}
+  .fx-kv .lt-box{left:7%;bottom:12%;max-width:86%}.fx-kv .lt-box.ong{left:auto;right:7%}
+  .lt-bar{width:12px;background:var(--urgu,#ffd166);transform-origin:50% 100%;flex:0 0 12px}
+  .lt-panel{position:relative;padding:20px 34px 22px 28px;background:rgba(6,10,20,.78);overflow:hidden}
+  .lt-box.ong .lt-panel{padding:20px 28px 22px 34px;text-align:right}
+  .lt-sheen{position:absolute;top:0;bottom:0;width:40%;left:0;background:linear-gradient(100deg,rgba(255,255,255,0) 0%,rgba(255,255,255,.18) 50%,rgba(255,255,255,0) 100%)}
+  .lt-m{overflow:hidden;display:block}
+  .lt-m>span{display:block}
+  .lt-ism{font-size:58px;font-weight:800;letter-spacing:-.01em;line-height:1.08;color:#fff;white-space:nowrap}
+  .lt-lav{font-size:30px;font-weight:600;letter-spacing:.04em;line-height:1.3;color:var(--urgu,#ffd166);margin-top:6px;white-space:nowrap}
+</style>
+<div id="root" data-composition-id="fx-lower-third">
+  <div class="lt-box">
+    <div class="lt-bar"></div>
+    <div class="lt-panel">
+      <div class="lt-sheen"></div>
+      <span class="lt-m"><span class="lt-ism"></span></span>
+      <span class="lt-m"><span class="lt-lav"></span></span>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  const V = (window.__hyperframes && window.__hyperframes.getVariables && window.__hyperframes.getVariables()) || {};
+  const q = s => document.querySelector(s); // runtime bu so'rovni shu nusxa ildiziga cheklaydi
+  const _r = document.querySelector('#root'), _o = _r.closest('[data-width]');
+  const FW = Number(_o && _o.getAttribute('data-width')) || _r.offsetWidth || 1920, FH = Number(_o && _o.getAttribute('data-height')) || _r.offsetHeight || 1080;
+  const FMT = FW / FH < 0.8 ? 'tik' : (FW / FH < 1.25 ? 'kv' : 'keng'); _r.classList.add('fx-' + FMT); // format: 16:9 keng, 1:1 kv, 9:16 tik
+  const box = q('.lt-box'), bar = q('.lt-bar'), panel = q('.lt-panel');
+  q('.lt-ism').textContent = V.ism || 'Ism Familiya';
+  q('.lt-lav').textContent = V.lavozim || '';
+  if (V.joy === 'ong') box.classList.add('ong');
+  const ong = V.joy === 'ong';
+  // Uzun ism/lavozim: panel kengligiga sig'dirish (nowrap, shrift kichrayadi, kamida 55%)
+  const avail = FW * (FMT === 'keng' ? 0.62 : FMT === 'kv' ? 0.86 : 0.88) - 12 - 66;
+  ['.lt-ism', '.lt-lav'].forEach(s => { const e = q(s), w = e.scrollWidth, fs = parseFloat(getComputedStyle(e).fontSize);
+    if (w > avail) e.style.fontSize = Math.max(fs * 0.55, fs * avail / w * 0.96) + 'px'; });
+  const tl = gsap.timeline({ paused: true });
+  const E = 'expo.out';
+  tl.fromTo(bar, { scaleY: 0 }, { scaleY: 1, duration: .45, ease: E }, .1);
+  tl.fromTo(panel, { clipPath: ong ? 'inset(0 0 0 100%)' : 'inset(0 100% 0 0)' }, { clipPath: 'inset(0 0% 0 0%)', duration: .7, ease: 'power3.inOut' }, .3);
+  tl.fromTo(q('.lt-ism'), { yPercent: 110 }, { yPercent: 0, duration: .6, ease: E }, .55);
+  tl.fromTo(q('.lt-lav'), { yPercent: 120 }, { yPercent: 0, duration: .6, ease: E }, .7);
+  tl.fromTo(q('.lt-sheen'), { xPercent: -120 }, { xPercent: 320, duration: 1.1, ease: 'power2.inOut' }, 1.0);
+  const out = Number(V.chiqish);
+  if (out > 0) {
+    tl.to([q('.lt-ism'), q('.lt-lav')], { yPercent: -110, duration: .35, ease: 'power2.in', stagger: .05 }, out);
+    tl.to(panel, { clipPath: ong ? 'inset(0 0 0 100%)' : 'inset(0 100% 0 0)', duration: .45, ease: 'power3.in' }, out + .15);
+    tl.to(bar, { scaleY: 0, duration: .3, ease: 'power2.in' }, out + .45);
+  }
+  window.__timelines['fx-lower-third'] = tl;
+})();
+</script>
+</template>
+</body></html>

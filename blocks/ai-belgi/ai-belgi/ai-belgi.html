@@ -1,0 +1,42 @@
+<!doctype html>
+<!--
+  fx-ai-belgi — "AI bilan yaratilgan" belgisi (AI kadr bor har sahnada majburiy).
+  <div data-composition-id="fx-ai-belgi" data-composition-src="ai-belgi/ai-belgi.html"
+       data-variable-values='{"matn":"Kadrlar AI bilan yaratilgan (ChatGPT)","joy":"past-ong"}'
+       data-start="0" data-duration="10" data-track-index="20" data-width="1920" data-height="1080"></div>
+-->
+<html data-composition-variables='[
+  {"id":"matn","type":"string","label":"Matn","default":"AI bilan yaratilgan"},
+  {"id":"joy","type":"enum","label":"Joy","default":"avto","options":[{"value":"avto","label":"Avto (9:16 da yuqori-chap, boshqasida pastki o`ng)"},{"value":"past-ong","label":"Pastki o`ng"},{"value":"past-chap","label":"Pastki chap"},{"value":"yuqori-ong","label":"Yuqori o`ng"},{"value":"yuqori-chap","label":"Yuqori chap"}]}
+]'>
+<head><meta charset="UTF-8" /></head>
+<body>
+<template>
+<style>
+  #root{position:absolute;inset:0;pointer-events:none;font-family:Inter,Arial,sans-serif}
+  .ai-b{position:absolute;display:flex;align-items:center;gap:10px;padding:9px 16px 9px 12px;border-radius:999px;background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.88);font-size:22px;font-weight:600;letter-spacing:.03em;white-space:nowrap}
+  .ai-b svg{width:22px;height:22px;flex:0 0 22px}
+  .past-ong{right:5.2%;bottom:5.6%}.past-chap{left:5.2%;bottom:5.6%}.yuqori-ong{right:5.2%;top:5.6%}.yuqori-chap{left:5.2%;top:5.6%}
+  /* 9:16: ijtimoiy tarmoq tugmalari/izoh zonasidan uzoqroq */
+  .fx-tik .yuqori-ong,.fx-tik .yuqori-chap{top:7.5%}.fx-tik .past-ong,.fx-tik .past-chap{bottom:6.5%}
+</style>
+<div id="root" data-composition-id="fx-ai-belgi">
+  <div class="ai-b past-ong"><svg viewBox="0 0 24 24"><path fill="#ffd166" d="M12 2l1.9 6.1L20 10l-6.1 1.9L12 18l-1.9-6.1L4 10l6.1-1.9z"/><path fill="#fff" d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></svg><span class="ai-t"></span></div>
+</div>
+<script>
+(function(){
+  const V = window.__hyperframes.getVariables() || {};
+  const _r = document.querySelector('#root'), _o = _r.closest('[data-width]');
+  const FW = Number(_o && _o.getAttribute('data-width')) || _r.offsetWidth || 1920, FH = Number(_o && _o.getAttribute('data-height')) || _r.offsetHeight || 1080;
+  const FMT = FW / FH < 0.8 ? 'tik' : (FW / FH < 1.25 ? 'kv' : 'keng'); _r.classList.add('fx-' + FMT); // format: 16:9 keng, 1:1 kv, 9:16 tik
+  const b = document.querySelector('.ai-b');
+  document.querySelector('.ai-t').textContent = V.matn || 'AI bilan yaratilgan';
+  const JOY = (!V.joy || V.joy === 'avto') ? (FMT === 'tik' ? 'yuqori-chap' : 'past-ong') : V.joy;
+  if (JOY !== 'past-ong') { b.classList.remove('past-ong'); b.classList.add(JOY); }
+  const tl = gsap.timeline({ paused: true });
+  tl.fromTo(b, { opacity: 0, y: JOY.startsWith('yuqori') ? -12 : 12 }, { opacity: 1, y: 0, duration: .5, ease: 'power3.out' }, .2);
+  window.__timelines['fx-ai-belgi'] = tl;
+})();
+</script>
+</template>
+</body></html>

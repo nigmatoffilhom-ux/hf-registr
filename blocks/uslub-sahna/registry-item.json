@@ -1,0 +1,40 @@
+{
+  "$schema": "https://hyperframes.heygen.com/schema/registry-item.json",
+  "name": "uslub-sahna",
+  "type": "hyperframes:block",
+  "title": "Uslub Sahna",
+  "description": "Sahna uchun rang va ko'rinish uslubini beradigan blok.",
+  "tags": [
+    "style",
+    "scene",
+    "color"
+  ],
+  "author": "hf-registr",
+  "dimensions": {
+    "width": 1920,
+    "height": 1080
+  },
+  "duration": 5.0,
+  "files": [
+    {
+      "path": "animatsiya/anim.js",
+      "target": "compositions/animatsiya/anim.js",
+      "type": "hyperframes:asset"
+    },
+    {
+      "path": "uslublar/sahna.html",
+      "target": "compositions/uslublar/sahna.html",
+      "type": "hyperframes:composition"
+    },
+    {
+      "path": "uslublar/uslublar.css",
+      "target": "compositions/uslublar/uslublar.css",
+      "type": "hyperframes:asset"
+    },
+    {
+      "path": "uslublar/uslublar.js",
+      "target": "compositions/uslublar/uslublar.js",
+      "type": "hyperframes:asset"
+    }
+  ]
+}

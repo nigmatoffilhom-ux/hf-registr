@@ -1,0 +1,55 @@
+{
+  "$schema": "https://hyperframes.heygen.com/schema/registry-item.json",
+  "name": "shader",
+  "type": "hyperframes:block",
+  "title": "Shader",
+  "description": "Oldingi qatlamga WebGL shader va rang LUT qo'llaydigan blok; HyperFrames 0.9.72 bilan.",
+  "tags": [
+    "shader",
+    "color-grading",
+    "webgl"
+  ],
+  "author": "hf-registr",
+  "dimensions": {
+    "width": 1920,
+    "height": 1080
+  },
+  "duration": 6.0,
+  "files": [
+    {
+      "path": "shader/fxs.js",
+      "target": "compositions/shader/fxs.js",
+      "type": "hyperframes:asset"
+    },
+    {
+      "path": "shader/lut/iliq.cube",
+      "target": "compositions/shader/lut/iliq.cube",
+      "type": "hyperframes:asset"
+    },
+    {
+      "path": "shader/lut/kino.cube",
+      "target": "compositions/shader/lut/kino.cube",
+      "type": "hyperframes:asset"
+    },
+    {
+      "path": "shader/lut/oq-qora.cube",
+      "target": "compositions/shader/lut/oq-qora.cube",
+      "type": "hyperframes:asset"
+    },
+    {
+      "path": "shader/lut/sovuq.cube",
+      "target": "compositions/shader/lut/sovuq.cube",
+      "type": "hyperframes:asset"
+    },
+    {
+      "path": "shader/lut/teal-orange.cube",
+      "target": "compositions/shader/lut/teal-orange.cube",
+      "type": "hyperframes:asset"
+    },
+    {
+      "path": "shader/qatlam.html",
+      "target": "compositions/shader/qatlam.html",
+      "type": "hyperframes:composition"
+    }
+  ]
+}

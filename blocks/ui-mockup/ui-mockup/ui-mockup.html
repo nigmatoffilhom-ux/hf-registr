@@ -1,0 +1,170 @@
+<!doctype html>
+<!--
+  fx-ui-mockup — telefon ilovasi mockup'i (reel: "Claude mobil ilovasi, Code rejimi"): pastda klaviatura, unda /komanda harfma-harf yoziladi (har tugma bosilganda "pop" balloni),
+  yuboriladi -> o'ngda to'q sariq pufak -> "Animating with /komanda..." + aylanuvchi yulduz -> spinner -> checkmark chek-ro'yxat (har qator ketma-ket).
+  Hammasi HTML/CSS; har kadr faqat vaqt funksiyasi (proxy tween), Math.random yo'q (tugma vaqtlari seeded). Ekran yozuvi o'rniga ishonarli UI.
+  komanda — yoziladigan buyruq ("/teardown"), izoh — "PASTED" kartochkasi matni (bo'sh = yo'q), qatorlar — JSON ["matn", ["matn","00:03.20"], ...], sarlavha — ro'yxat kartochkasi sarlavhasi.
+  Host (ulash.py: python3 -I ulash.py ui-mockup --loyiha X --var komanda=/ssenariy):
+  <div data-composition-id="fx-ui-mockup" data-composition-src="ui-mockup/ui-mockup.html" data-variable-values='{"komanda":"/teardown","izoh":"Yo&#39;l qatlamlari, 5 ta"}'
+       data-start="0" data-duration="10" data-track-index="5" data-width="1920" data-height="1080"></div>
+-->
+<html data-composition-variables='[
+  {"id":"komanda","type":"string","label":"Yoziladigan buyruq","default":"/teardown"},
+  {"id":"izoh","type":"string","label":"PASTED kartochka matni (bo‘sh = yo‘q)","default":"Yo‘l qatlamlari, 5 ta"},
+  {"id":"qatorlar","type":"string","label":"Chek-ro‘yxat JSON: [\"matn\", [\"matn\",\"vaqt\"], ...]","default":""},
+  {"id":"sarlavha","type":"string","label":"Ro‘yxat kartochkasi sarlavhasi","default":""},
+  {"id":"urgu","type":"color","label":"Urg‘u rangi","default":"#d97757"},
+  {"id":"joy","type":"enum","label":"Telefon joyi","default":"markaz","options":[{"value":"markaz","label":"Markaz"},{"value":"chap","label":"Chap"},{"value":"ong","label":"O‘ng"}]},
+  {"id":"olcham","type":"number","label":"O‘lcham (1 = kadr balandligining ~88%)","default":1,"min":0.3,"step":0.05},
+  {"id":"fon","type":"boolean","label":"Qora fon","default":true},
+  {"id":"davom","type":"number","label":"Davomiylik (s)","default":10,"min":3,"step":0.5},
+  {"id":"urug","type":"number","label":"Seed","default":4}
+]'>
+<head><meta charset="UTF-8" /></head>
+<body>
+<template>
+<style>
+  #root{position:absolute;inset:0;overflow:hidden;font-family:'Inter',sans-serif}
+  .um-bg{position:absolute;inset:0}
+  .um-stage{position:absolute;left:50%;top:50%;width:410px;height:864px;margin:-432px 0 0 -205px;transform-origin:50% 50%}
+  .um-phone{position:absolute;inset:0;border-radius:58px;background:#1a1a1d;box-shadow:0 0 0 2px #38383d,0 40px 90px rgba(0,0,0,.65),inset 0 0 0 2px #0a0a0c;overflow:hidden}
+  .um-scr{position:absolute;left:10px;top:10px;right:10px;bottom:10px;border-radius:48px;background:#0e0e10;overflow:hidden;color:#f2efe6}
+  .um-notch{position:absolute;left:50%;top:10px;width:112px;height:32px;margin-left:-56px;border-radius:20px;background:#000;z-index:9}
+  .um-status{position:absolute;left:0;right:0;top:0;height:50px;display:flex;justify-content:space-between;align-items:center;padding:6px 34px 0;font-weight:600;font-size:15px;z-index:8}
+  .um-tabs{position:absolute;left:0;right:0;top:54px;display:flex;justify-content:center}
+  .um-tabs div{display:flex;background:#1d1d21;border-radius:12px;padding:3px}
+  .um-tabs span{padding:6px 18px;border-radius:9px;font-size:14px;font-weight:600;color:#8d8c92}.um-tabs span.on{background:#34343a;color:#f2efe6}
+  .um-chat{position:absolute;left:0;right:0;top:104px;bottom:0;padding:10px 16px}
+  .um-paste{position:absolute;left:16px;right:16px;border:1px solid #34343a;background:#17171a;border-radius:14px;padding:10px 12px;opacity:0}
+  .um-paste b{display:block;font:600 10px 'JetBrains Mono',monospace;letter-spacing:.12em;color:#8d8c92;margin-bottom:4px}.um-paste p{font-size:14px;line-height:1.35}
+  .um-user{position:absolute;right:16px;max-width:300px;background:var(--um-u,#d97757);color:#fff;font:600 17px 'JetBrains Mono',monospace;padding:10px 16px;border-radius:20px 20px 6px 20px;opacity:0;transform-origin:100% 100%}
+  .um-ai{position:absolute;left:16px;right:16px;display:flex;align-items:center;gap:10px;font-size:15px;color:#c9c6bd;opacity:0}
+  .um-star{width:22px;height:22px;flex:none}
+  .um-list{position:absolute;left:16px;right:16px;border:1px solid #34343a;background:#151518;border-radius:18px;padding:14px 14px 6px;opacity:0}
+  .um-list h4{font:600 11px 'JetBrains Mono',monospace;letter-spacing:.1em;color:#8d8c92;margin-bottom:8px;text-transform:uppercase}
+  .um-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid #232327;font-size:14.5px;opacity:0}
+  .um-row:first-of-type{border-top:0}.um-row .m{flex:none;width:22px;height:22px;position:relative}
+  .um-row .tx{flex:1;line-height:1.25}.um-row .tm{font:500 11px 'JetBrains Mono',monospace;color:#8d8c92;opacity:0}
+  .um-row.fin .tx{font-weight:700;color:#fff}
+  .um-input{position:absolute;left:12px;right:12px;bottom:300px;height:52px;border-radius:26px;background:#1d1d21;border:1px solid #34343a;display:flex;align-items:center;padding:0 8px 0 18px;z-index:4}
+  .um-typed{font:600 17px 'JetBrains Mono',monospace;color:#f2efe6;white-space:pre}.um-ph{position:absolute;left:18px;color:#6d6c72;font-size:16px}
+  .um-caret{width:2px;height:22px;background:var(--um-u,#d97757);margin-left:1px}
+  .um-send{margin-left:auto;width:36px;height:36px;border-radius:50%;background:var(--um-u,#d97757);display:flex;align-items:center;justify-content:center;flex:none}
+  .um-kb{position:absolute;left:0;right:0;bottom:0;height:292px;background:#1c1c1f;padding:10px 4px 0;z-index:5}
+  .um-kr{display:flex;justify-content:center;gap:6px;margin-bottom:12px}
+  .um-k{position:relative;width:34px;height:44px;border-radius:7px;background:#4a4a50;color:#f2efe6;font-size:21px;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 0 #0a0a0c}
+  .um-k.w{width:46px;background:#34343a;font-size:15px}.um-k.sp{width:196px;font-size:15px}.um-k.rt{width:86px;background:#34343a;font-size:15px}
+  .um-k.on{background:#6a6a72}
+  .um-b{position:absolute;left:50%;bottom:34px;width:52px;height:66px;margin-left:-26px;border-radius:12px;background:#6a6a72;color:#fff;font-size:34px;display:none;align-items:flex-start;justify-content:center;padding-top:7px;box-shadow:0 6px 16px rgba(0,0,0,.4);z-index:3}
+  .um-home{position:absolute;left:50%;bottom:8px;width:132px;height:5px;margin-left:-66px;border-radius:3px;background:#f2efe6;opacity:.85;z-index:7}
+</style>
+<div id="root" data-composition-id="fx-ui-mockup">
+  <div class="um-bg"></div>
+  <div class="um-stage"><div class="um-phone"><div class="um-scr">
+    <div class="um-notch"></div>
+    <div class="um-status"><span>9:41</span><span style="letter-spacing:2px">&#9679;&#9679;&#9679; &#9646;</span></div>
+    <div class="um-tabs"><div><span>Chat</span><span class="on">Code</span></div></div>
+    <div class="um-chat">
+      <div class="um-paste"><b>PASTED</b><p></p></div>
+      <div class="um-user"></div>
+      <div class="um-ai">
+        <svg class="um-star" viewBox="0 0 24 24"><g stroke="var(--um-u,#d97757)" stroke-width="2.6" stroke-linecap="round"><path d="M12 2v20"/><path d="M3.3 7l17.4 10"/><path d="M3.3 17l17.4-10"/></g></svg>
+        <span class="um-ait"></span></div>
+      <div class="um-list"><h4></h4></div>
+    </div>
+    <div class="um-input"><span class="um-ph">Xabar yozing...</span><span class="um-typed"></span><i class="um-caret"></i>
+      <span class="um-send"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg></span></div>
+    <div class="um-kb"></div>
+    <div class="um-home"></div>
+  </div></div></div>
+</div>
+<script>
+(function(){
+  const V = window.__hyperframes.getVariables() || {};
+  const q = (s, r) => (r || document).querySelector(s);
+  const root = q('#root'); const olc = root.closest('[data-width]');
+  const W = Number(olc && olc.getAttribute('data-width')) || 1920, H = Number(olc && olc.getAttribute('data-height')) || 1080;
+  const num = (v, d) => (v === undefined || v === null || v === '' || isNaN(Number(v))) ? d : Number(v);
+  const bool = (v, d) => (v === undefined || v === null || v === '') ? d : !(v === false || v === 'false' || v === 0);
+  const DUR = (Number(olc && olc.getAttribute('data-duration')) || num(V.davom, 10)), URGU = V.urgu || '#d97757', FON = bool(V.fon, true), JOY = V.joy || 'markaz';
+  const KOM = String(V.komanda === undefined ? '/teardown' : V.komanda), IZOH = String(V.izoh === undefined ? 'Yo‘l qatlamlari, 5 ta' : V.izoh), SARL = V.sarlavha ? String(V.sarlavha) : (KOM.replace(/^\//, '') + ' · tekshiruv');
+  root.style.setProperty('--um-u', URGU);
+  root.classList.add(W > H * 1.2 ? 'fx-keng' : (W < H * 0.8 ? 'fx-tik' : 'fx-kv'));
+  // seeded PRNG
+  const prng = seed => () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+  const rnd = prng(num(V.urug, 4));
+  const clamp01 = t => Math.max(0, Math.min(1, t)), smooth = t => t * t * (3 - 2 * t), expoOut = t => t >= 1 ? 1 : 1 - Math.pow(2, -10 * t), backOut = t => { const c1 = 1.9, c3 = c1 + 1; return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2); };
+
+  // o'lcham va joy
+  const stage = q('.um-stage'); const sc = Math.min(H * 0.88 / 864, W * 0.94 / 410) * num(V.olcham, 1);
+  const cx = JOY === 'chap' ? W * 0.3 : (JOY === 'ong' ? W * 0.7 : W / 2); const tikX = W < H * 0.8 ? W / 2 : cx;
+  stage.style.left = tikX + 'px'; stage.style.top = (H / 2) + 'px'; stage.style.transform = 'scale(' + sc.toFixed(4) + ')';
+  const bg = q('.um-bg'); if (FON) bg.style.background = 'radial-gradient(ellipse at 50% 40%, #151822 0%, #07080d 60%, #040509 100%)';
+
+  // klaviatura
+  const kb = q('.um-kb'), keys = {}; const rowsT = ['qwertyuiop', 'asdfghjkl', 'zxcvbnm'];
+  const mk = (cls, txt, ch) => { const k = document.createElement('div'); k.className = 'um-k ' + cls; k.textContent = txt; const b = document.createElement('div'); b.className = 'um-b'; b.textContent = ch || txt; k.appendChild(b); return { k, b }; };
+  rowsT.forEach((r, ri) => { const row = document.createElement('div'); row.className = 'um-kr'; if (ri === 2) { const s = mk('w', '⇧'); row.appendChild(s.k); }
+    r.split('').forEach(c => { const o = mk('', c, c.toUpperCase()); keys[c] = o; row.appendChild(o.k); }); if (ri === 2) { const s = mk('w', '⌫'); row.appendChild(s.k); } kb.appendChild(row); });
+  { const row = document.createElement('div'); row.className = 'um-kr'; const a = mk('w', '123', '123'), b = mk('sp', 'space', ' '), c = mk('rt', 'return', ''); keys['#'] = a; keys[' '] = b; keys['\n'] = c; [a, b, c].forEach(o => row.appendChild(o.k)); kb.appendChild(row); }
+  const keyOf = ch => { const l = ch.toLowerCase(); return keys[l] || (ch === ' ' ? keys[' '] : keys['#']); };
+
+  // vaqt jadvali
+  const T0 = 0.8; const chT = []; { let t = T0; for (const ch of KOM) { chT.push(t); t += 0.085 + rnd() * 0.075; } }
+  const tyEnd = chT.length ? chT[chT.length - 1] + 0.13 : T0;
+  const tSend = tyEnd + 0.45, tUser = tSend + 0.14, tKbd = tSend + 0.1, tAi = tUser + 0.55, tList = tAi + 0.85, rowGap = 0.95, rowSpin = 0.75;
+  let ROWS; { let j = null; try { j = typeof V.qatorlar === 'string' ? (V.qatorlar ? JSON.parse(V.qatorlar) : null) : V.qatorlar; } catch (e) {} ROWS = (Array.isArray(j) && j.length ? j : ['Matn va rasmlar o‘qildi', 'Ovoz yozuvi sinxronlandi', 'Animatsiya yig‘ildi', 'Tekshiruv o‘tdi']).map((r, i, a) => Array.isArray(r) ? r : [r, i === a.length - 1 ? 'OK' : '00:0' + (i + 1) + '.' + (10 + Math.floor(rnd() * 80))]); }
+  // chat elementlari (joylashuv: yuqoridan pastga, aniq px)
+  const paste = q('.um-paste'), user = q('.um-user'), ai = q('.um-ai'), list = q('.um-list');
+  q('p', paste).textContent = IZOH; if (!IZOH) paste.style.display = 'none'; user.textContent = KOM; q('h4', list).textContent = SARL;
+  const rowEls = ROWS.map((r, i) => { const d = document.createElement('div'); d.className = 'um-row' + (i === ROWS.length - 1 ? ' fin' : '');
+    d.innerHTML = '<span class="m"><svg class="sp" viewBox="0 0 24 24" width="22" height="22" style="position:absolute;inset:0"><circle cx="12" cy="12" r="9" fill="none" stroke="#3a3a40" stroke-width="3"/><path d="M12 3a9 9 0 0 1 9 9" fill="none" stroke="var(--um-u,#d97757)" stroke-width="3" stroke-linecap="round"/></svg>' +
+      '<svg class="ck" viewBox="0 0 24 24" width="22" height="22" style="position:absolute;inset:0;opacity:0"><circle cx="12" cy="12" r="11" fill="#3b82f6"/><path d="M7 12.5l3.2 3.2L17 9" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="tx"></span><span class="tm"></span>';
+    q('.tx', d).textContent = r[0]; q('.tm', d).textContent = r[1]; list.appendChild(d); return { d, sp: q('.sp', d), ck: q('.ck', d), tm: q('.tm', d) }; });
+  // joylashuv (kadr 390 kenglik, chat ichida): paste y=0; user; ai; list
+  const yPaste = 4, yUser = IZOH ? 84 : 4, yAi = yUser + 60, yList = yAi + 44;
+  paste.style.top = yPaste + 'px'; user.style.top = yUser + 'px'; ai.style.top = yAi + 'px'; list.style.top = yList + 'px';
+  const typed = q('.um-typed'), caret = q('.um-caret'), ph = q('.um-ph'), inp = q('.um-input'), send = q('.um-send'), aiT = q('.um-ait'), star = q('.um-star');
+  let activeKeys = [];
+
+  function renderAt(t) {
+    // kirish: telefon yumshoq paydo bo'ladi
+    const pin = expoOut(clamp01(t / 0.6)); stage.style.opacity = pin; stage.style.transform = 'scale(' + (sc * (0.94 + 0.06 * pin)).toFixed(4) + ') translateY(' + ((1 - pin) * 24 + Math.sin(t * 0.9) * 3).toFixed(2) + 'px)';
+    // yozish
+    let n = 0; chT.forEach(x => { if (t >= x) n++; });
+    const sent = t >= tSend + 0.12; typed.textContent = sent ? '' : KOM.slice(0, n); ph.style.display = (n === 0 && !sent) ? 'block' : 'none';
+    caret.style.opacity = sent ? 0 : (Math.floor(t * 2.2) % 2 === 0 ? 1 : 0.15); caret.style.display = sent ? 'none' : 'block';
+    // tugmalar (pop)
+    activeKeys.forEach(o => { o.k.classList.remove('on'); o.b.style.display = 'none'; }); activeKeys = [];
+    chT.forEach((x, i) => { if (t >= x && t < x + 0.13) { const o = keyOf(KOM[i]); o.k.classList.add('on'); if (KOM[i] !== ' ') { o.b.style.display = 'flex'; o.b.textContent = KOM[i] === ' ' ? '' : (/[a-z]/i.test(KOM[i]) && keys[KOM[i].toLowerCase()] ? KOM[i].toUpperCase() : KOM[i]); } activeKeys.push(o); } });
+    // yuborish va klaviatura tushishi
+    const sp = clamp01((t - tSend) / 0.14); send.style.transform = 'scale(' + (1 - 0.18 * Math.sin(Math.PI * sp)).toFixed(3) + ')';
+    const hide = smooth(clamp01((t - tKbd) / 0.55)); kb.style.transform = 'translateY(' + (hide * 300).toFixed(1) + 'px)'; inp.style.bottom = (300 - hide * 276 + 8 * 0).toFixed(1) + 'px';
+    // pasted kartochka
+    paste.style.opacity = smooth(clamp01((t - 0.35) / 0.4)) * 1; paste.style.transform = 'translateY(' + ((1 - expoOut(clamp01((t - 0.35) / 0.5))) * 14).toFixed(1) + 'px)';
+    // foydalanuvchi pufagi
+    const pu = clamp01((t - tUser) / 0.5); user.style.opacity = pu > 0 ? 1 : 0; user.style.transform = 'scale(' + (0.7 + 0.3 * backOut(pu)).toFixed(3) + ') translateY(' + ((1 - expoOut(pu)) * 26).toFixed(1) + 'px)';
+    // AI qatori + yulduz
+    const pa = smooth(clamp01((t - tAi) / 0.4)); ai.style.opacity = pa; ai.style.transform = 'translateY(' + ((1 - pa) * 10).toFixed(1) + 'px)';
+    star.style.transform = 'rotate(' + ((t * 260) % 360).toFixed(1) + 'deg)';
+    const doneAll = t >= tList + 0.35 + (ROWS.length - 1) * rowGap + rowSpin;
+    aiT.textContent = doneAll ? 'Tayyor: ' + KOM : 'Animating with ' + KOM.replace(/^\//, '') + '.'.repeat(1 + Math.floor(t * 3) % 3);
+    // ro'yxat
+    const pl = smooth(clamp01((t - tList) / 0.45)); list.style.opacity = pl; list.style.transform = 'translateY(' + ((1 - pl) * 16).toFixed(1) + 'px)';
+    rowEls.forEach((r, i) => {
+      const s0 = tList + 0.35 + i * rowGap, pr = smooth(clamp01((t - s0) / 0.3)); r.d.style.opacity = pr; r.d.style.transform = 'translateX(' + ((1 - pr) * 12).toFixed(1) + 'px)';
+      const done = t >= s0 + rowSpin; r.sp.style.opacity = done ? 0 : 1; r.sp.style.transform = 'rotate(' + (((t - s0) * 520) % 360).toFixed(1) + 'deg)';
+      const pc = clamp01((t - s0 - rowSpin) / 0.35); r.ck.style.opacity = pc > 0 ? 1 : 0; r.ck.style.transform = 'scale(' + (pc > 0 ? 0.4 + 0.6 * backOut(pc) : 0.4).toFixed(3) + ')';
+      r.tm.style.opacity = smooth(clamp01((t - s0 - rowSpin - 0.1) / 0.3));
+    });
+  }
+  const tl = gsap.timeline({ paused: true }), st = { t: 0 };
+  tl.to(st, { t: DUR, duration: DUR, ease: 'none', onUpdate: () => renderAt(st.t) }, 0);
+  window.addEventListener('hf-seek', () => renderAt(st.t));
+  renderAt(0);
+  window.__timelines['fx-ui-mockup'] = tl;
+  if (window.__hfForceTimelineRebind) window.__hfForceTimelineRebind();
+})();
+</script>
+</template>
+</body></html>

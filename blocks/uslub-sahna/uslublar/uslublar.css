@@ -1,0 +1,108 @@
+/* uslublar.css — 4 uslub to'plami: apple | kinetik | minimal | kino.
+   Ulash (host <head>):  <link rel="stylesheet" href="uslublar/uslublar.css">
+   Ishlatish: o'ramga class="uslub-apple" (yoki -kinetik / -minimal / -kino) qo'ying — ichidagi .u-* elementlar shu uslubni oladi.
+   Tokenlar (CSS o'zgaruvchilar):
+     rang:     --u-fon --u-sirt --u-matn --u-matn2 --u-urgu --u-urgu-matn
+     shrift:   --u-shrift-sarlavha --u-shrift-matn --u-sarlavha-olcham --u-sarlavha-qalinlik --u-sarlavha-oraliq --u-sarlavha-registr --u-matn-olcham
+     joylash:  --u-tekis (flex-start|center) --u-matn-tekis (left|center) --u-chap --u-lt-past
+     harakat:  --u-ease (GSAP nomi, kirish) --u-ease-chiqish --u-ease-css (CSS cubic-bezier) --u-dur (s, raqam) --u-har (stagger, s)
+   Shriftlar — HyperFrames o'zi joylaydigan to'plamdan (Inter, Archivo Black, Playfair Display, EB Garamond): oflayn va ogohlantirishsiz. */
+
+.uslub-apple{
+  --u-fon:#f5f5f7; --u-sirt:rgba(255,255,255,.72); --u-matn:#1d1d1f; --u-matn2:#6e6e73; --u-urgu:#0071e3; --u-urgu-matn:#fff;
+  --u-shrift-sarlavha:Inter,'Helvetica Neue',Arial,sans-serif; --u-shrift-matn:Inter,'Helvetica Neue',Arial,sans-serif;
+  --u-sarlavha-olcham:124px; --u-sarlavha-qalinlik:700; --u-sarlavha-oraliq:-.035em; --u-sarlavha-registr:none; --u-matn-olcham:38px;
+  --u-tekis:flex-start; --u-matn-tekis:left; --u-chap:170px; --u-lt-past:120px;
+  --u-ease:power3.out; --u-ease-chiqish:power2.in; --u-ease-css:cubic-bezier(.25,.1,.25,1); --u-dur:1.1; --u-har:.07;
+}
+.uslub-kinetik{
+  --u-fon:#101010; --u-sirt:#ffd400; --u-matn:#ffffff; --u-matn2:#bdbdbd; --u-urgu:#ffd400; --u-urgu-matn:#101010;
+  --u-shrift-sarlavha:'Montserrat',Inter,Arial,sans-serif; --u-shrift-matn:Inter,Arial,sans-serif;
+  --u-sarlavha-olcham:168px; --u-sarlavha-qalinlik:900; --u-sarlavha-oraliq:-.02em; --u-sarlavha-registr:uppercase; --u-matn-olcham:40px;
+  --u-tekis:flex-start; --u-matn-tekis:left; --u-chap:120px; --u-lt-past:110px;
+  --u-ease:back.out(2.6); --u-ease-chiqish:expo.in; --u-ease-css:cubic-bezier(.34,1.56,.64,1); --u-dur:.45; --u-har:.03;
+}
+.uslub-minimal{
+  --u-fon:#fafafa; --u-sirt:transparent; --u-matn:#0a0a0a; --u-matn2:#5c5c5c; --u-urgu:#0a0a0a; --u-urgu-matn:#fafafa;
+  --u-shrift-sarlavha:Inter,Arial,sans-serif; --u-shrift-matn:Inter,Arial,sans-serif;
+  --u-sarlavha-olcham:112px; --u-sarlavha-qalinlik:400; --u-sarlavha-oraliq:-.03em; --u-sarlavha-registr:none; --u-matn-olcham:34px;
+  --u-tekis:flex-start; --u-matn-tekis:left; --u-chap:200px; --u-lt-past:120px;
+  --u-ease:power2.out; --u-ease-chiqish:power1.in; --u-ease-css:cubic-bezier(.4,0,.2,1); --u-dur:.8; --u-har:.06;
+}
+.uslub-kino{
+  --u-fon:#0b0d10; --u-sirt:transparent; --u-matn:#f3e9d8; --u-matn2:rgba(243,233,216,.72); --u-urgu:#d9a35b; --u-urgu-matn:#0b0d10;
+  --u-shrift-sarlavha:'Playfair Display',Georgia,serif; --u-shrift-matn:'EB Garamond',Georgia,serif;
+  --u-sarlavha-olcham:92px; --u-sarlavha-qalinlik:400; --u-sarlavha-oraliq:.28em; --u-sarlavha-registr:uppercase; --u-matn-olcham:40px;
+  --u-tekis:center; --u-matn-tekis:center; --u-chap:160px; --u-lt-past:178px;
+  --u-ease:sine.inOut; --u-ease-chiqish:sine.in; --u-ease-css:cubic-bezier(.45,.05,.55,.95); --u-dur:1.8; --u-har:.16;
+}
+
+/* ---- umumiy komponentlar ---- */
+.u-sahna{position:absolute;inset:0;overflow:hidden;background:var(--u-fon);color:var(--u-matn);font-family:var(--u-shrift-matn)}
+.u-rasm{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none}
+.u-matnlar{position:absolute;top:0;bottom:0;left:var(--u-chap);right:var(--u-chap);display:flex;flex-direction:column;justify-content:center;align-items:var(--u-tekis);text-align:var(--u-matn-tekis)}
+.u-ustki{display:block;font-family:var(--u-shrift-matn);font-size:26px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--u-urgu);margin-bottom:26px}
+.u-sarlavha{display:block;font-family:var(--u-shrift-sarlavha);font-size:var(--u-sarlavha-olcham);font-weight:var(--u-sarlavha-qalinlik);letter-spacing:var(--u-sarlavha-oraliq);text-transform:var(--u-sarlavha-registr);line-height:1.04;color:var(--u-matn);max-width:1500px}
+.u-matn{display:block;font-size:var(--u-matn-olcham);line-height:1.38;color:var(--u-matn2);max-width:1100px;margin-top:34px}
+.u-lt{position:absolute;left:var(--u-chap);bottom:var(--u-lt-past);display:flex;align-items:stretch}
+.u-lt-panel{display:block;padding:18px 30px 20px 24px}
+.u-lt-chiziq{display:block;width:6px;background:var(--u-urgu);transform-origin:50% 100%}
+.u-lt-ism{display:block;font-family:var(--u-shrift-matn);font-size:40px;font-weight:700;color:var(--u-matn);line-height:1.15;white-space:nowrap}
+.u-lt-lav{display:block;font-size:26px;color:var(--u-matn2);margin-top:4px;white-space:nowrap}
+.u-nur,.u-blok,.u-chiziq,.u-qutib,.u-grain,.u-vinyetka,.u-qora{display:none}
+
+/* ---- apple: yumshoq nur, shisha lower-third ---- */
+.uslub-apple .u-nur{display:block;position:absolute;width:1400px;height:1400px;right:-380px;top:-420px;border-radius:50%;
+  background:radial-gradient(circle,rgba(0,113,227,.22) 0%,rgba(0,113,227,.08) 38%,rgba(245,245,247,0) 70%)}
+.uslub-apple .u-ustki{color:var(--u-urgu);letter-spacing:.02em;text-transform:none;font-size:30px;font-weight:700}
+.uslub-apple .u-lt{background:var(--u-sirt);border:1px solid rgba(0,0,0,.08);border-radius:22px;box-shadow:0 18px 50px rgba(0,0,0,.08);overflow:hidden}
+.uslub-apple .u-lt-chiziq{display:none}
+.uslub-apple .u-lt-panel{padding:20px 34px 22px}
+
+/* ---- kinetik: sariq plashka, qalin, katta ---- */
+.uslub-kinetik .u-blok{display:block;position:absolute;left:0;top:0;width:100%;height:100%;background:var(--u-urgu);transform-origin:0% 50%}
+.uslub-kinetik .u-ustki{position:relative;display:block;padding:8px 18px;color:var(--u-urgu-matn);letter-spacing:.12em;font-weight:900;font-size:28px;margin-bottom:22px}
+.uslub-kinetik .u-ustki-matn{position:relative;display:block}
+.uslub-kinetik .u-matn{font-weight:700;color:var(--u-matn2)}
+.uslub-kinetik .u-lt{background:var(--u-urgu)}
+.uslub-kinetik .u-lt-chiziq{width:14px;background:#ff3d2e}
+.uslub-kinetik .u-lt-ism{color:var(--u-urgu-matn);font-weight:900;text-transform:uppercase;letter-spacing:.02em}
+.uslub-kinetik .u-lt-lav{color:#3a3a00;font-weight:700}
+
+/* ---- minimal: ingichka chiziq, ko'p bo'sh joy ---- */
+.uslub-minimal .u-chiziq{display:block;width:420px;height:1px;background:var(--u-matn);margin-top:44px;transform-origin:0% 50%}
+.uslub-minimal .u-ustki{color:var(--u-matn2);font-weight:400;font-size:20px;letter-spacing:.32em}
+.uslub-minimal .u-matn{margin-top:30px}
+.uslub-minimal .u-lt{border-top:1px solid var(--u-matn)}
+.uslub-minimal .u-lt-chiziq{display:none}
+.uslub-minimal .u-lt-panel{padding:16px 0 0}
+.uslub-minimal .u-lt-ism{font-weight:400;font-size:30px;letter-spacing:.02em}
+.uslub-minimal .u-lt-lav{font-size:20px;letter-spacing:.24em;text-transform:uppercase}
+
+/* ---- kino: 2.39:1 qutib, don, vinyetka, markazda ---- */
+.uslub-kino .u-rasm{display:block}
+.uslub-kino .u-qutib{display:block;position:absolute;left:0;right:0;height:138px;background:#000;z-index:5}
+.uslub-kino .u-qutib.yuqori{top:0}.uslub-kino .u-qutib.past{bottom:0}
+.uslub-kino .u-vinyetka{display:block;position:absolute;inset:0;z-index:3;pointer-events:none;
+  background:radial-gradient(ellipse at 50% 50%,rgba(0,0,0,0) 45%,rgba(0,0,0,.55) 100%),linear-gradient(180deg,rgba(11,13,16,.35),rgba(11,13,16,.55))}
+.uslub-kino .u-grain{display:block;position:absolute;left:-50%;top:-50%;width:200%;height:200%;z-index:4;pointer-events:none;opacity:.16;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='320' height='320'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");background-size:320px 320px}
+.uslub-kino .u-qora{display:block;position:absolute;inset:0;background:#000;z-index:6;opacity:0}
+.uslub-kino .u-matnlar{z-index:4}
+.uslub-kino .u-ustki{color:var(--u-urgu);font-family:var(--u-shrift-matn);font-weight:400;font-style:italic;font-size:30px;letter-spacing:.3em;text-transform:none}
+.uslub-kino .u-matn{font-style:italic;max-width:1000px}
+.uslub-kino .u-lt{left:0;right:0;justify-content:center;z-index:4}
+.uslub-kino .u-lt-chiziq{display:none}
+.uslub-kino .u-lt-panel{text-align:center;padding:0}
+.uslub-kino .u-lt-ism{font-family:var(--u-shrift-sarlavha);font-weight:400;font-size:30px;letter-spacing:.32em;text-transform:uppercase}
+.uslub-kino .u-lt-lav{font-style:italic;font-size:26px;letter-spacing:.06em;color:var(--u-urgu)}
+
+/* Formatlar (sahna.html ildizida fx-keng | fx-kv | fx-tik klassi): 9:16 va 1:1 da chekka va o'lcham */
+.fx-tik .u-sahna{--u-chap:7%;--u-lt-past:21%}
+.fx-tik .u-sarlavha{font-size:calc(var(--u-sarlavha-olcham) * .72)}
+.fx-tik .u-matn{max-width:100%;font-size:calc(var(--u-matn-olcham) * .9)}
+.fx-tik .uslub-apple .u-nur{width:1100px;height:1100px;right:-420px;top:-260px}
+.fx-tik .uslub-kino .u-qutib{height:9%}
+.fx-kv .u-sahna{--u-chap:8%;--u-lt-past:10%}
+.fx-kv .u-sarlavha{font-size:calc(var(--u-sarlavha-olcham) * .82)}
+.fx-kv .u-matn{max-width:100%}

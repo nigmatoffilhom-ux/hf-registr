@@ -1,0 +1,40 @@
+{
+  "$schema": "https://hyperframes.heygen.com/schema/registry-item.json",
+  "name": "zarra-morf",
+  "type": "hyperframes:block",
+  "title": "Zarra Morf",
+  "description": "Zarralarning shaklga yig'ilishi va morfing animatsiyasi.",
+  "tags": [
+    "3d",
+    "particles",
+    "morph"
+  ],
+  "author": "hf-registr",
+  "dimensions": {
+    "width": 1920,
+    "height": 1080
+  },
+  "duration": 9.0,
+  "files": [
+    {
+      "path": "3d-mini/vendor/LICENSE-three.txt",
+      "target": "compositions/3d-mini/vendor/LICENSE-three.txt",
+      "type": "hyperframes:asset"
+    },
+    {
+      "path": "3d-mini/vendor/m3-three.js",
+      "target": "compositions/3d-mini/vendor/m3-three.js",
+      "type": "hyperframes:asset"
+    },
+    {
+      "path": "3d-ortak/fx3d.js",
+      "target": "compositions/3d-ortak/fx3d.js",
+      "type": "hyperframes:asset"
+    },
+    {
+      "path": "zarra-morf/zarra-morf.html",
+      "target": "compositions/zarra-morf/zarra-morf.html",
+      "type": "hyperframes:composition"
+    }
+  ]
+}

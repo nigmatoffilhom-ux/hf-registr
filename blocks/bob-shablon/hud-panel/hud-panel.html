@@ -1,0 +1,67 @@
+<!doctype html>
+<!--
+  fx-hud-panel — ikki panelli monoshrift HUD (JetBrains Mono): burchak "L" belgilari, sarlavha qatori, key = value qatorlari,
+  qiymatlar vaqt funksiyasi sifatida SANAB O'SADI (count-up: 0.01 M, %, burchak °, birlik bilan), yonib-o'chuvchi kursor. Deterministik.
+  Qatorlar: "R|7.73>2.35|M|2 ; d|0.5>10|m ; theta|0>360|°|0 ; holat|AKTIV" (nom | dan>gacha | birlik | kasr) yoki JSON massiv.
+  Talab (ulash.py o'zi qo'yadi): animatsiya/anim.js, hud-panel/hud.js, hud-panel/hud.css.
+  <div data-composition-id="fx-hud-panel" data-composition-src="hud-panel/hud-panel.html"
+       data-variable-values='{"chap":"R|7.73>2.35|M ; d|0.5>10|m","ong":"theta|0>270|°|0 ; E|0>87.5|%","joy":"past"}'
+       data-start="0" data-duration="4" data-track-index="9" data-width="1920" data-height="1080"></div>
+-->
+<html data-composition-variables='[
+  {"id":"chap","type":"string","label":"Chap panel qatorlari","default":"R|7.73>2.35|M ; d|0.5>10|m ; n|0>120000"},
+  {"id":"ong","type":"string","label":"O`ng panel qatorlari","default":"theta|0>270|° ; E|0>87.5|% ; t|0>3.2|s"},
+  {"id":"chap_sarl","type":"string","label":"Chap sarlavha","default":"PARAMETRLAR"},
+  {"id":"ong_sarl","type":"string","label":"O`ng sarlavha","default":"HOLAT"},
+  {"id":"urgu","type":"color","label":"Qiymat/belgi rangi","default":"#f0a24b"},
+  {"id":"joy","type":"enum","label":"Joy","default":"past","options":[{"value":"past","label":"Pastda"},{"value":"yuqori","label":"Tepada"},{"value":"markaz","label":"Markazda"}]},
+  {"id":"olcham","type":"number","label":"Shrift o`lchami ko`paytirgichi (1 = odatiy)","default":1,"min":0.5,"max":2,"step":0.05},
+  {"id":"kechikish","type":"number","label":"Kirish kechikishi (s)","default":0,"min":0,"step":0.1},
+  {"id":"sanash","type":"number","label":"Sanash uzunligi (s, 0 = blok oxirigacha)","default":0,"min":0,"step":0.1},
+  {"id":"chiqish","type":"number","label":"Chiqish uzunligi (s, 0 = chiqmaydi)","default":0.35,"min":0,"step":0.05}
+]'>
+<head><meta charset="UTF-8" /></head>
+<body>
+<template>
+<style>
+  #root{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+  .hp-w{position:absolute;left:0;right:0;display:flex;justify-content:space-between;gap:3%}
+  .hp-w>div{flex:1 1 0}
+  .fx-keng .hp-w{left:6%;right:6%}.fx-kv .hp-w{left:6%;right:6%}.fx-tik .hp-w{left:7%;right:7%}
+  .hp-w.past{bottom:8.5%}.hp-w.yuqori{top:9%}.hp-w.markaz{top:50%;transform:translateY(-50%)}
+  .fx-tik .hp-w.past{bottom:7%}
+</style>
+<div id="root" data-composition-id="fx-hud-panel">
+  <div class="hp-w"><div class="hp-l"></div><div class="hp-r"></div></div>
+</div>
+<script>
+(function(){
+  const V = (window.__hyperframes && window.__hyperframes.getVariables && window.__hyperframes.getVariables()) || {};
+  const root = document.querySelector('#root'), _o = root.closest('[data-width]');
+  const q = s => root.querySelector(s);
+  const FW = Number(_o && _o.getAttribute('data-width')) || root.offsetWidth || 1920, FH = Number(_o && _o.getAttribute('data-height')) || root.offsetHeight || 1080;
+  const FMT = FW / FH < 0.8 ? 'tik' : (FW / FH < 1.25 ? 'kv' : 'keng'); root.classList.add('fx-' + FMT);
+  const D = Number(_o && _o.getAttribute('data-duration')) || 4;
+  const sc = FMT === 'keng' ? FW / 1920 : FW / 1080;
+  const ol = (Number(V.olcham) || 1) * (FMT === 'keng' ? 1.28 : FMT === 'kv' ? 1.05 : 1.45);
+  root.style.fontSize = (16 * sc * ol) + 'px';
+  root.style.setProperty('--urgu', V.urgu || '#f0a24b');
+  const W = q('.hp-w'); W.classList.add(V.joy === 'yuqori' ? 'yuqori' : V.joy === 'markaz' ? 'markaz' : 'past');
+  const kech = Number(V.kechikish) || 0, ch = V.chiqish == null ? 0.35 : Math.max(0, Number(V.chiqish) || 0);
+  const pL = FX.hud.panel(q('.hp-l'), { sarlavha: V.chap_sarl == null ? 'PARAMETRLAR' : String(V.chap_sarl), oxir: '●', satrlar: V.chap == null ? 'R|7.73>2.35|M ; d|0.5>10|m ; n|0>120000' : V.chap, kursor: false });
+  const pR = FX.hud.panel(q('.hp-r'), { sarlavha: V.ong_sarl == null ? 'HOLAT' : String(V.ong_sarl), oxir: '●', satrlar: V.ong == null ? 'theta|0>270|° ; E|0>87.5|% ; t|0>3.2|s' : V.ong, kursor: true });
+  const build = () => {
+    const tl = gsap.timeline({ paused: true });
+    const t0 = kech + 0.1, dur = Number(V.sanash) > 0 ? Number(V.sanash) : Math.max(1, D - t0 - 0.3 - ch);
+    tl.fromTo(q('.hp-l'), { opacity: 0, y: 26 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power3.out' }, t0);
+    tl.fromTo(q('.hp-r'), { opacity: 0, y: 26 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power3.out' }, t0 + 0.14);
+    FX.hud.jonlantir(tl, pL, t0 + 0.25, { dur, har: 0.1, ease: 'power1.out', davom: D - t0 - 0.25 });
+    FX.hud.jonlantir(tl, pR, t0 + 0.38, { dur, har: 0.1, ease: 'power1.out', davom: D - t0 - 0.38 });
+    if (ch > 0) tl.to(W, { opacity: 0, duration: ch, ease: 'power1.in' }, Math.max(0.5, D - ch));
+    window.__timelines['fx-hud-panel'] = tl;
+  };
+  (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(build);
+})();
+</script>
+</template>
+</body></html>

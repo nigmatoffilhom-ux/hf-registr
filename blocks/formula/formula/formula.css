@@ -1,0 +1,4 @@
+/* formula.css — KaTeX qismlari (FX.formula) uchun. KaTeX o'z stili: vendor/katex.min.css */
+.fx-formula .katex{font-size:1em;color:inherit}
+.fx-formula .katex-display{margin:0}
+.fx-formula .katex .fq{display:inline-block}

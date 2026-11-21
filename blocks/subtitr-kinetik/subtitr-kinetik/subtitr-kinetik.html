@@ -1,0 +1,74 @@
+<!doctype html>
+<!--
+  fx-subtitr-kinetik — so'zma-so'z yoritiladigan subtitr (karaoke): guruh xira chiqadi, aytilayotgan so'z ostida
+  urg'u "marker" sirpanib o'tadi, so'z kattalashadi. Raqamli so'zlar doim urg'u rangida.
+  Ma'lumot SUB massivida — asboblar/srt2subtitr.py bilan to'ldiriladi.
+  <div data-composition-id="fx-subtitr-kinetik" data-composition-src="subtitr-kinetik/subtitr-kinetik.html"
+       data-start="0" data-duration="8" data-track-index="9" data-width="1920" data-height="1080"></div>
+-->
+<html data-composition-variables='[
+  {"id":"urgu","type":"color","label":"Marker rangi","default":"#ffd166"},
+  {"id":"pastdan","type":"number","label":"Pastdan masofa (px)","default":100,"min":0,"step":10},
+  {"id":"olcham","type":"number","label":"Shrift o`lchami (px, maksimal)","default":64,"min":30,"step":2}
+]'>
+<head><meta charset="UTF-8" /></head>
+<body>
+<template>
+<style>
+  #root{position:absolute;inset:0;pointer-events:none;font-family:Inter,Arial,sans-serif}
+  .sk-g{position:absolute;left:0;right:0;bottom:calc(var(--pastdan,100) * 1px);display:flex;justify-content:center;opacity:0;visibility:hidden}
+  .sk-line{position:relative;display:flex;flex-wrap:wrap;justify-content:center;gap:0 .26em;max-width:86%;padding:.12em .4em;background:rgba(5,8,16,.55);border-radius:14px}
+  .sk-mark{position:absolute;left:0;top:0;height:100%;width:10px;background:var(--urgu,#ffd166);border-radius:10px;opacity:0}
+  .sk-w{position:relative;display:inline-block;font-weight:800;line-height:1.25;color:#fff;white-space:nowrap;transform-origin:50% 60%;padding:0 .08em}
+  .sk-w.raqam{color:var(--urgu,#ffd166)}
+</style>
+<div id="root" data-composition-id="fx-subtitr-kinetik"></div>
+<script>
+(function(){
+  const SUB = /*SUB*/[{"s":0.3,"e":3.0,"w":[["Haydovchi",0.3,1.0],["eng",1.0,1.3],["avval",1.3,1.6],["nimani",1.6,2.1],["koʻradi?",2.1,2.9]]}]/*SUB_END*/;
+  const V = window.__hyperframes.getVariables() || {};
+  const root = document.querySelector('#root');
+  const _r = root, _o = _r.closest('[data-width]');
+  const FW = Number(_o && _o.getAttribute('data-width')) || _r.offsetWidth || 1920, FH = Number(_o && _o.getAttribute('data-height')) || _r.offsetHeight || 1080;
+  const FMT = FW / FH < 0.8 ? 'tik' : (FW / FH < 1.25 ? 'kv' : 'keng'); _r.classList.add('fx-' + FMT); // format: 16:9 keng, 1:1 kv, 9:16 tik
+  const MAX = Number(V.olcham) || 64;
+  const PD = isNaN(Number(V.pastdan)) ? 100 : Number(V.pastdan);
+  const PAST = FMT === 'tik' ? Math.max(PD, FH * 0.2) : FMT === 'kv' ? Math.max(PD, FH * 0.11) : PD;
+  const FITW = FMT === 'tik' ? FW * 0.8 * 1.8 : Math.min(1400, FW * 0.75);
+  const tl = gsap.timeline({ paused: true });
+  const groups = SUB.map(g => {
+    const ge = document.createElement('div'); ge.className = 'sk-g';
+    const line = document.createElement('div'); line.className = 'sk-line';
+    let fs = MAX;
+    try { fs = Math.min(MAX, window.__hyperframes.fitTextFontSize(g.w.map(w => w[0]).join(' '), { fontFamily: 'Inter', fontWeight: 800, maxWidth: FITW, baseFontSize: MAX, minFontSize: 36 }).fontSize); } catch (e) {}
+    line.style.fontSize = fs + 'px'; ge.style.bottom = PAST + 'px';
+    const mark = document.createElement('div'); mark.className = 'sk-mark'; line.appendChild(mark);
+    const ws = g.w.map(w => { const s = document.createElement('span'); s.className = 'sk-w' + (/\d/.test(w[0]) ? ' raqam' : ''); s.textContent = w[0]; line.appendChild(s); return { el: s, s: w[1], e: w[2], raqam: /\d/.test(w[0]) }; });
+    ge.appendChild(line); root.appendChild(ge);
+    return { g, ge, line, mark, ws, fs };
+  });
+  const build = () => {
+    groups.forEach(({ g, ge, mark, ws, fs }) => {
+      tl.set(ge, { visibility: 'visible' }, g.s);
+      tl.fromTo(ge, { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.25, ease: 'power3.out' }, g.s);
+      tl.fromTo(ws.map(w => w.el), { opacity: 0.42 }, { opacity: 0.42, duration: 0.01 }, g.s);
+      ws.forEach((w, i) => {
+        const x = w.el.offsetLeft, wd = w.el.offsetWidth, y = w.el.offsetTop - 0.12 * fs, ht = w.el.offsetHeight + 0.24 * fs; // 9:16 da 2 qator bo'lishi mumkin
+        const next = i + 1 < ws.length ? ws[i + 1].s : Math.max(w.e, w.s + 0.25);
+        if (i === 0) tl.fromTo(mark, { x: x, y: y, width: wd, height: ht, opacity: 0 }, { opacity: 1, duration: 0.12 }, w.s);
+        else tl.to(mark, { x: x, y: y, width: wd, height: ht, duration: 0.16, ease: 'power3.out' }, w.s);
+        tl.to(w.el, { opacity: 1, color: w.raqam ? '#ffffff' : '#0a0e18', scale: 1.08, duration: 0.12, ease: 'back.out(2.5)' }, w.s);
+        tl.to(w.el, { color: w.raqam ? (V.urgu || '#ffd166') : '#ffffff', scale: 1, duration: 0.16, ease: 'power2.out' }, Math.max(w.s + 0.12, next));
+      });
+      tl.to(mark, { opacity: 0, duration: 0.12 }, Math.max(g.s + 0.2, g.e - 0.2));
+      tl.to(ge, { opacity: 0, y: -12, duration: 0.15, ease: 'power2.in' }, Math.max(g.s + 0.3, g.e - 0.15));
+      tl.set(ge, { opacity: 0, visibility: 'hidden' }, g.e);
+    });
+    window.__timelines['fx-subtitr-kinetik'] = tl;
+  };
+  // So'z o'rni shrift yuklangach o'lchanadi
+  (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(build);
+})();
+</script>
+</template>
+</body></html>

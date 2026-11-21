@@ -1,0 +1,25 @@
+{
+  "$schema": "https://hyperframes.heygen.com/schema/registry-item.json",
+  "name": "pop-subtitr",
+  "type": "hyperframes:block",
+  "title": "Pop Subtitr",
+  "description": "Urg'u va pop animatsiyasi bilan subtitr chiqaruvchi blok.",
+  "tags": [
+    "captions",
+    "text",
+    "pop"
+  ],
+  "author": "hf-registr",
+  "dimensions": {
+    "width": 1080,
+    "height": 1920
+  },
+  "duration": 8.0,
+  "files": [
+    {
+      "path": "pop-subtitr/pop-subtitr.html",
+      "target": "compositions/pop-subtitr/pop-subtitr.html",
+      "type": "hyperframes:composition"
+    }
+  ]
+}

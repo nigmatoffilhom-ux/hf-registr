@@ -1,0 +1,99 @@
+<!doctype html>
+<!--
+  fx-subtitr-3d — CSS 3D subtitr: har so'z chuqurlikdan (translateZ) burilib kiradi, hajm qatlamlari, yorug'lik yaltirashi,
+  aytilayotgan so'z urg'u rangida. Ma'lumot SUB massivida — asboblar/srt2subtitr.py bilan to'ldiriladi.
+  Host'ga ulash (vaqtlar sub-composition ichida 0 dan hisoblanadi):
+  <div data-composition-id="fx-subtitr-3d" data-composition-src="subtitr-3d/subtitr-3d.html"
+       data-start="0" data-duration="6" data-track-index="9" data-width="1920" data-height="1080"></div>
+-->
+<html data-composition-variables='[
+  {"id":"urgu","type":"color","label":"Aytilayotgan so`z rangi","default":"#ffd166"},
+  {"id":"pastdan","type":"number","label":"Pastdan masofa (px)","default":110,"min":0,"step":10},
+  {"id":"olcham","type":"number","label":"Shrift o`lchami (px, maksimal)","default":76,"min":30,"step":2}
+]'>
+<head><meta charset="UTF-8" /></head>
+<body>
+<template>
+<style>
+  #root{position:absolute;inset:0;pointer-events:none;font-family:Inter,Arial,sans-serif}
+  .s3d-wrap{position:absolute;left:0;right:0;bottom:calc(var(--pastdan,110) * 1px);height:200px;perspective:1100px;perspective-origin:50% 30%}
+  .s3d-g{position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:center;align-items:flex-end;flex-wrap:wrap;gap:0 .3em;transform-style:preserve-3d;padding:0 8%;opacity:0;visibility:hidden}
+  .s3d-w{position:relative;display:inline-block;transform-style:preserve-3d;font-weight:900;line-height:1.1;letter-spacing:-.01em;white-space:nowrap}
+  .s3d-l{position:absolute;left:0;top:0;color:rgba(18,28,58,.9)}
+  .s3d-f{position:relative;display:block;color:transparent;background:linear-gradient(100deg,#ffffff 0%,#ffffff 38%,#fff4cf 50%,#ffffff 62%,#ffffff 100%);background-size:300% 100%;background-position:100% 0;-webkit-background-clip:text;background-clip:text;transform:translateZ(1px)}
+  .s3d-a{position:absolute;left:0;top:0;color:var(--urgu,#ffd166);opacity:0;transform:translateZ(2px);text-shadow:0 0 24px rgba(255,209,102,.35)}
+</style>
+<div id="root" data-composition-id="fx-subtitr-3d">
+  <div class="s3d-wrap"></div>
+</div>
+<script>
+(function(){
+  const SUB = /*SUB*/[{"s":0.2,"e":2.6,"w":[["Tunda",0.2,0.6],["yoʻl",0.6,0.9],["boshqacha.",0.9,2.4]]},{"s":2.6,"e":5.8,"w":[["Faralar",2.6,3.1],["yoritgan",3.1,3.6],["joygina",3.6,4.2]]}]/*SUB_END*/;
+  const V = window.__hyperframes.getVariables() || {};
+  const wrap = document.querySelector('.s3d-wrap');
+  const _r = document.querySelector('#root'), _o = _r.closest('[data-width]');
+  const FW = Number(_o && _o.getAttribute('data-width')) || _r.offsetWidth || 1920, FH = Number(_o && _o.getAttribute('data-height')) || _r.offsetHeight || 1080;
+  const FMT = FW / FH < 0.8 ? 'tik' : (FW / FH < 1.25 ? 'kv' : 'keng'); _r.classList.add('fx-' + FMT); // format: 16:9 keng, 1:1 kv, 9:16 tik
+  const MAX = Number(V.olcham) || 76, LAYERS = 9, QADAM = 2.6; // 9 qatlam x 2,6 px = ~0,3em hajm
+  const PD = isNaN(Number(V.pastdan)) ? 110 : Number(V.pastdan);
+  wrap.style.bottom = (FMT === 'tik' ? Math.max(PD, FH * 0.2) : FMT === 'kv' ? Math.max(PD, FH * 0.11) : PD) + 'px';
+  const FITW = FMT === 'tik' ? FW * 0.84 * 1.75 : Math.min(1500, FW * 0.8); // 9:16 da 2 qatorgacha
+  const fit = (txt) => {
+    try { return Math.min(MAX, window.__hyperframes.fitTextFontSize(txt, { fontFamily: 'Inter', fontWeight: 900, maxWidth: FITW, baseFontSize: MAX, minFontSize: 40 }).fontSize); }
+    catch (e) { return MAX; }
+  };
+  const tl = gsap.timeline({ paused: true });
+  const hash = n => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+  SUB.forEach((g, gi) => {
+    const ge = document.createElement('div');
+    ge.className = 's3d-g';
+    ge.style.fontSize = fit(g.w.map(w => w[0]).join(' ')) + 'px';
+    const words = g.w.map((w, wi) => {
+      const we = document.createElement('span');
+      we.className = 's3d-w';
+      for (let i = LAYERS; i >= 1; i--) {
+        const l = document.createElement('span');
+        l.className = 's3d-l'; l.textContent = w[0];
+        l.style.transform = 'translateZ(' + (-i * QADAM) + 'px)';
+        // yon devor: oldi och ko'k-kulrang, orqasi to'q — to'q fonda ham hajm ko'rinsin
+        l.style.color = 'rgb(' + (128 - i * 11) + ',' + (142 - i * 11) + ',' + (192 - i * 13) + ')';
+        if (i === LAYERS) l.style.textShadow = '0 10px 22px rgba(0,0,0,.6)';
+        we.appendChild(l);
+      }
+      const f = document.createElement('span'); f.className = 's3d-f'; f.textContent = w[0]; we.appendChild(f);
+      const a = document.createElement('span'); a.className = 's3d-a'; a.textContent = w[0]; we.appendChild(a);
+      ge.appendChild(we);
+      return { we, f, a, s: w[1], e: w[2], k: gi * 31 + wi };
+    });
+    wrap.appendChild(ge);
+    // Guruh paydo bo'ladi, sekin buriladi
+    tl.set(ge, { opacity: 1, visibility: 'visible' }, g.s);
+    tl.fromTo(ge, { rotationY: -13, rotationX: 8 }, { rotationY: 11, rotationX: -2, duration: Math.max(0.5, g.e - g.s), ease: 'sine.inOut' }, g.s);
+    words.forEach((W, i) => {
+      const t0 = Math.max(g.s, W.s - 0.12);
+      const sg = hash(W.k + 11) > 0.5 ? 1 : -1; // so'z qaysi tomonga qiyshayadi (hajm yon devori ko'rinadi)
+      tl.fromTo(W.we, { z: -520, rotationX: 70 + hash(W.k) * 20, rotationY: -30 + hash(W.k + 3) * 60, y: 40, opacity: 0 },
+        { z: 0, rotationX: -5, rotationY: 10 * sg, y: 0, opacity: 1, duration: 0.55, ease: 'expo.out' }, t0);
+      // Joyiga tushgach ham hajm ko'rinsin: so'z sekin buriladi va "nafas oladi" (chiqishgacha)
+      const land = t0 + 0.55, endW = Math.max(g.s + 0.3, g.e - 0.18), dW = endW - land;
+      if (dW > 0.25) {
+        // burchak hech qachon 0 ga tushmaydi (10° → 19° → 8°) — yassi ko'rinish bo'lmaydi
+        tl.to(W.we, { keyframes: [
+          { rotationY: 19 * sg, rotationX: -9, scale: 1.035, duration: dW * 0.5, ease: 'sine.inOut' },
+          { rotationY: 8 * sg, rotationX: -3, scale: 1, duration: dW * 0.5, ease: 'sine.inOut' }] }, land);
+      }
+      tl.fromTo(W.f, { backgroundPosition: '100% 0' }, { backgroundPosition: '0% 0', duration: 0.7, ease: 'power2.out' }, t0 + 0.1);
+      const next = i + 1 < words.length ? words[i + 1].s : W.e;
+      tl.fromTo(W.a, { opacity: 0 }, { opacity: 1, duration: 0.08, ease: 'none' }, W.s);
+      tl.to(W.a, { opacity: 0, duration: 0.15, ease: 'none' }, Math.max(W.s + 0.1, next));
+    });
+    // Chiqish: guruh orqaga ag'dariladi, keyin qat'iy o'chiriladi
+    const out = Math.max(g.s + 0.3, g.e - 0.18);
+    tl.to(ge, { rotationX: -55, z: -260, opacity: 0, duration: 0.18, ease: 'power2.in' }, out);
+    tl.set(ge, { opacity: 0, visibility: 'hidden' }, g.e);
+  });
+  window.__timelines['fx-subtitr-3d'] = tl;
+})();
+</script>
+</template>
+</body></html>

@@ -1,0 +1,176 @@
+<!doctype html>
+<!--
+  fx-bob-shablon — qotirilgan "bob" shabloni (reel tahlili XULOSA-2/3/4): rim raqami + serif sarlavha (bitta urg'u so'z amber kursivda) +
+  kursiv izoh + KaTeX formula + 2 ta HUD qutisi (count-up) + burchak crop-marks + o'ng yuqorida "TYPE" typewriter yorlig'i + kanal yorlig'i.
+  Markaziy vizual joyi BO'SH (shaffof): boshqa blok/video shu joyga qo'yiladi (--var belgi=true joyni chiziq bilan ko'rsatadi).
+    16:9  — chapda matn ustuni, o'ngda vizual joyi (x 50–94 %, y 13–71 %), pastda 2 HUD;
+    9:16  — tepada matn, o'rtada vizual joyi (x 7–93 %, y 45–79 %), pastda 2 HUD;   1:1 — 16:9 ga o'xshash.
+  Talab (host <head>da, ulash.py o'zi qo'yadi): animatsiya/anim.js, hud-panel/hud.js + hud.css, formula/vendor/katex.min.js + katex.min.css, formula/formula.js + formula.css.
+  Formula qismlari: TeX ichida [[ ... ]] — har bir bo'lak alohida paydo bo'ladi.   HUD qatorlari: "R|7.73>2.35|M ; d|0.5>10|m" (hud-panel/hud.js sarlavhasiga qarang).
+  Qatlam: fon=false (odatiy) — shaffof ustki qatlam (vizual blokdan KEYIN ulang); fon=true — o'z foni bor (vizualni bobdan KEYIN ulang).
+  <div data-composition-id="fx-bob-shablon" data-composition-src="bob-shablon/bob-shablon.html"
+       data-variable-values='{"bob":"III","sarlavha":"Qora tuynuk halqa","urgu_soz":2}'
+       data-start="0" data-duration="4" data-track-index="9" data-width="1920" data-height="1080"></div>
+-->
+<html data-composition-variables='[
+  {"id":"bob","type":"string","label":"Rim raqami","default":"I"},
+  {"id":"sarlavha","type":"string","label":"Sarlavha (2-4 so`z)","default":"Qora tuynuk halqa"},
+  {"id":"urgu_soz","type":"string","label":"Urg`u so`z (1 dan; vergul bilan; bo`sh = oxirgisi)","default":""},
+  {"id":"izoh","type":"string","label":"Kursiv izoh","default":"Yorugʻlik ham undan chiqib keta olmaydi."},
+  {"id":"formula","type":"string","label":"TeX formula ([[qism]] belgisi bilan)","default":"[[r_s]] = \\frac{[[2GM]]}{[[c^2]]}"},
+  {"id":"hud_chap","type":"string","label":"Chap HUD qatorlari","default":"R|7.73>2.35|M ; d|0.5>10|m ; n|0>120000"},
+  {"id":"hud_ong","type":"string","label":"O`ng HUD qatorlari","default":"theta|0>270|° ; E|0>87.5|% ; t|0>3.2|s"},
+  {"id":"hud_chap_sarl","type":"string","label":"Chap HUD sarlavhasi","default":"PARAMETRLAR"},
+  {"id":"hud_ong_sarl","type":"string","label":"O`ng HUD sarlavhasi","default":"HOLAT"},
+  {"id":"tur","type":"string","label":"TYPE yorlig`i (typewriter)","default":"TYPE: ORBITAL"},
+  {"id":"kanal","type":"string","label":"Kanal / mavzu yorlig`i","default":"NEGA? · FIZIKA"},
+  {"id":"imza","type":"string","label":"Pastki imzo","default":""},
+  {"id":"urgu","type":"color","label":"Urg`u rangi","default":"#f0a24b"},
+  {"id":"fon","type":"boolean","label":"O`z foni (#05070d + tor)","default":false},
+  {"id":"belgi","type":"boolean","label":"Vizual joyi chizig`ini ko`rsat","default":false},
+  {"id":"chiqish","type":"number","label":"Chiqish uzunligi (s, 0 = chiqmaydi)","default":0.35,"min":0,"step":0.05},
+  {"id":"sanash","type":"number","label":"HUD sanash uzunligi (s, 0 = blok oxirigacha)","default":0,"min":0,"step":0.1}
+]'>
+<head><meta charset="UTF-8" /></head>
+<body>
+<template>
+<style>
+  #root{position:absolute;inset:0;pointer-events:none;font-family:'JetBrains Mono',ui-monospace,monospace;color:#f2efe6;overflow:hidden}
+  .b-wrap{position:absolute;inset:0}
+  .b-bg{position:absolute;inset:0;background:#05070d;background-image:radial-gradient(rgba(240,162,75,.07) 1px,transparent 1.2px);background-size:34px 34px}
+  .b-sk{position:absolute;left:0;right:0;pointer-events:none}
+  .b-sk.t{top:0;height:46%;background:linear-gradient(180deg,rgba(5,7,13,.82),rgba(5,7,13,0))}
+  .b-sk.p{bottom:0;height:34%;background:linear-gradient(0deg,rgba(5,7,13,.82),rgba(5,7,13,0))}
+  .b-cm{position:absolute;width:2.6em;height:2.6em;border:0 solid var(--urgu,#f0a24b);opacity:.9}
+  .b-cm.a{left:3.2%;top:2.2%;border-left-width:2px;border-top-width:2px}
+  .b-cm.b{right:3.2%;top:2.2%;border-right-width:2px;border-top-width:2px}
+  .b-cm.c{left:3.2%;bottom:2.2%;border-left-width:2px;border-bottom-width:2px}
+  .b-cm.d{right:3.2%;bottom:2.2%;border-right-width:2px;border-bottom-width:2px}
+  .b-kanal,.b-tur{position:absolute;top:5.4%;font-size:1.05em;letter-spacing:.2em;text-transform:uppercase;white-space:nowrap;color:rgba(242,239,230,.62)}
+  .b-kanal{left:6%}
+  .b-tur{right:6%;color:var(--urgu,#f0a24b)}
+  .b-imza{position:absolute;left:0;right:0;bottom:5.3%;text-align:center;font-size:.78em;letter-spacing:.24em;color:rgba(242,239,230,.38);text-transform:uppercase}
+  .b-tcol{position:absolute;display:flex;flex-direction:column;gap:.85em}
+  .b-trow{display:flex;align-items:flex-start;gap:.5em}
+  .b-rim{font-family:'Playfair Display',serif;font-style:italic;font-weight:400;color:var(--urgu,#f0a24b);line-height:1.04;flex:0 0 auto}
+  .b-sar{font-family:'Playfair Display',serif;font-weight:700;line-height:1.06;letter-spacing:-.005em;color:#f2efe6;margin:0}
+  .b-sar .b-w{display:inline-block;padding-right:.22em}
+  .b-sar .b-w.u{font-style:italic;font-weight:700;color:var(--urgu,#f0a24b)}
+  .b-izoh{font-family:'Playfair Display',serif;font-style:italic;font-weight:400;line-height:1.28;color:rgba(242,239,230,.74)}
+  .b-form{color:#f2efe6;line-height:1.1}
+  .b-form .katex-display{margin:0}.b-form .katex-display>.katex{text-align:left}
+  .b-slot{position:absolute}
+  .b-slot.k{outline:1px dashed rgba(240,162,75,.5);outline-offset:-1px}
+  .b-slot.k::after{content:"VIZUAL JOYI";position:absolute;left:1em;top:.8em;font-size:.8em;letter-spacing:.2em;color:rgba(240,162,75,.7)}
+  .b-hl,.b-hr{position:absolute}
+
+  /* 16:9 */
+  .fx-keng .b-tcol{left:6%;top:13.5%;width:41%;height:57%}
+  .fx-keng .b-rim{font-size:3.2em}.fx-keng .b-sar{font-size:5.2em}.fx-keng .b-izoh{font-size:2.15em}.fx-keng .b-form{font-size:3em}
+  .fx-keng .b-slot{left:50%;top:13%;width:44%;height:58%}
+  .fx-keng .b-hl,.fx-keng .b-hr{bottom:8.5%;width:42.5%;font-size:1.28em}
+  .fx-keng .b-hl{left:6%}.fx-keng .b-hr{right:6%}
+  /* 1:1 */
+  .fx-kv .b-tcol{left:6%;top:12.5%;width:43%;height:55%}
+  .fx-kv .b-rim{font-size:2.4em}.fx-kv .b-sar{font-size:3.7em}.fx-kv .b-izoh{font-size:1.65em}.fx-kv .b-form{font-size:2.2em}
+  .fx-kv .b-slot{left:52%;top:12.5%;width:42%;height:55%}
+  .fx-kv .b-hl,.fx-kv .b-hr{bottom:8%;width:42.5%;font-size:1.05em}
+  .fx-kv .b-hl{left:6%}.fx-kv .b-hr{right:6%}
+  /* 9:16 */
+  .fx-tik .b-tcol{left:7%;top:8.6%;width:86%;height:34.5%}
+  .fx-tik .b-rim{font-size:4em}.fx-tik .b-sar{font-size:6.6em}.fx-tik .b-izoh{font-size:2.5em}.fx-tik .b-form{font-size:4.2em}
+  .fx-tik .b-slot{left:7%;top:45%;width:86%;height:34%}
+  .fx-tik .b-hl,.fx-tik .b-hr{bottom:7%;width:41.5%;font-size:1.45em}
+  .fx-tik .b-hl{left:7%}.fx-tik .b-hr{right:7%}
+  .fx-tik .b-kanal,.fx-tik .b-tur{top:4%}
+  .fx-tik .b-cm.a,.fx-tik .b-cm.b{top:1.6%}.fx-tik .b-cm.c,.fx-tik .b-cm.d{bottom:1.6%}
+</style>
+<div id="root" data-composition-id="fx-bob-shablon">
+  <div class="b-wrap">
+    <div class="b-bg"></div>
+    <div class="b-sk t"></div><div class="b-sk p"></div>
+    <div class="b-cm a"></div><div class="b-cm b"></div><div class="b-cm c"></div><div class="b-cm d"></div>
+    <div class="b-kanal"></div><div class="b-tur"></div>
+    <div class="b-tcol">
+      <div class="b-trow"><div class="b-rim"></div><h2 class="b-sar"></h2></div>
+      <div class="b-izoh"></div>
+      <div class="b-form"></div>
+    </div>
+    <div class="b-slot"></div>
+    <div class="b-hl"></div><div class="b-hr"></div>
+    <div class="b-imza"></div>
+  </div>
+</div>
+<script>
+(function(){
+  const V = (window.__hyperframes && window.__hyperframes.getVariables && window.__hyperframes.getVariables()) || {};
+  const root = document.querySelector('#root'), _o = root.closest('[data-width]');
+  const q = s => root.querySelector(s), qa = s => Array.from(root.querySelectorAll(s));
+  const FW = Number(_o && _o.getAttribute('data-width')) || root.offsetWidth || 1920, FH = Number(_o && _o.getAttribute('data-height')) || root.offsetHeight || 1080;
+  const FMT = FW / FH < 0.8 ? 'tik' : (FW / FH < 1.25 ? 'kv' : 'keng'); root.classList.add('fx-' + FMT);
+  const D = Number(_o && _o.getAttribute('data-duration')) || 4;
+  const sc = FMT === 'keng' ? FW / 1920 : FW / 1080;
+  root.style.fontSize = (16 * sc) + 'px';
+  const UR = V.urgu || '#f0a24b';
+  root.style.setProperty('--urgu', UR);
+  const T = (v, d) => (v == null ? d : String(v));
+  if (!(V.fon === true || V.fon === 'true')) q('.b-bg').style.display = 'none';
+  if (V.belgi === true || V.belgi === 'true') q('.b-slot').classList.add('k');
+
+  q('.b-kanal').textContent = T(V.kanal, 'NEGA? · FIZIKA');
+  q('.b-tur').textContent = T(V.tur, 'TYPE: ORBITAL');
+  q('.b-imza').textContent = T(V.imza, '');
+  q('.b-rim').textContent = T(V.bob, 'I') + '.';
+  q('.b-izoh').textContent = T(V.izoh, '');
+  // sarlavha: so'zlar span'ga, urg'u so'z(lar) kursiv amber
+  const sozlar = T(V.sarlavha, 'Qora tuynuk halqa').split(/\s+/).filter(Boolean);
+  let ur = String(V.urgu_soz == null ? '' : V.urgu_soz).split(',').map(x => parseInt(x, 10)).filter(x => x >= 1 && x <= sozlar.length);
+  if (!ur.length) ur = [sozlar.length];
+  const sar = q('.b-sar');
+  const sw = sozlar.map((w, i) => { const s = document.createElement('span'); s.className = 'b-w' + (ur.indexOf(i + 1) >= 0 ? ' u' : ''); s.textContent = w; sar.appendChild(s); return s; });
+  // formula (KaTeX lokal)
+  const fm = FX.formula.yasa(q('.b-form'), T(V.formula, ''), { displayMode: true });
+  // HUD
+  const pL = FX.hud.panel(q('.b-hl'), { sarlavha: T(V.hud_chap_sarl, 'PARAMETRLAR'), oxir: '●', satrlar: V.hud_chap, kursor: false });
+  const pR = FX.hud.panel(q('.b-hr'), { sarlavha: T(V.hud_ong_sarl, 'HOLAT'), oxir: '●', satrlar: V.hud_ong, kursor: true });
+  const ch = V.chiqish == null ? 0.35 : Math.max(0, Number(V.chiqish) || 0);
+
+  const build = () => {
+    // sig'dirish: sarlavha ustun balandligiga, formula eniga (deterministik, shrift yuklangach)
+    const col = q('.b-tcol');
+    let fs = parseFloat(getComputedStyle(sar).fontSize), min = fs * 0.5, g = 0;
+    while (col.scrollHeight > col.clientHeight + 1 && fs > min && g++ < 80) { fs *= 0.97; sar.style.fontSize = fs + 'px'; q('.b-rim').style.fontSize = (fs * 0.62) + 'px'; }
+    if (!sar.style.fontSize) q('.b-rim').style.fontSize = (parseFloat(getComputedStyle(sar).fontSize) * 0.62) + 'px';
+    const fe = q('.b-form'), ka = fe.querySelector('.katex');
+    if (ka) {
+      let ff = parseFloat(getComputedStyle(fe).fontSize), w = 0;
+      while (ka.scrollWidth > fe.clientWidth && ff > 12 && w++ < 60) { ff *= 0.95; fe.style.fontSize = ff + 'px'; }
+    }
+    const tl = gsap.timeline({ paused: true });
+    // 0) crop-marks + yorliqlar
+    tl.fromTo(qa('.b-cm'), { opacity: 0, scale: 0.6 }, { opacity: 0.9, scale: 1, duration: 0.4, ease: 'power3.out', stagger: 0.05 }, 0);
+    tl.fromTo(q('.b-kanal'), { opacity: 0 }, { opacity: 1, duration: 0.35 }, 0.1);
+    FX.anim.typewriter(tl, q('.b-tur'), 0.3, { tezlik: 24, kursor: false });
+    // 1) rim + sarlavha
+    tl.fromTo(q('.b-rim'), { opacity: 0, x: -14 }, { opacity: 1, x: 0, duration: 0.45, ease: 'power3.out' }, 0.12);
+    FX.anim.kirish(tl, sw, 0.22, { tur: 'blur-in', dur: 0.6, har: 0.1, blur: 10, boshScale: 1.04 });
+    // 2) izoh, formula
+    tl.fromTo(q('.b-izoh'), { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, 0.75);
+    FX.formula.jonlantir(tl, fm, 1.0, { kirish: 'qism', dur: 0.55, har: 0.2 });
+    // 3) HUD: panel kirishi + count-up (qolgan butun vaqt davomida sanab o'sadi)
+    tl.fromTo(q('.b-hl'), { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power3.out' }, 0.85);
+    tl.fromTo(q('.b-hr'), { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power3.out' }, 1.0);
+    const sn = Number(V.sanash) || 0;   // 0 = blok oxirigacha sanaydi (eski xatti-harakat)
+    const dur = sn > 0 ? sn : Math.max(1, D - 1.1 - ch - 0.25);
+    FX.hud.jonlantir(tl, pL, 1.1, { dur, har: 0.1, ease: 'power1.out', davom: D - 1.1 });
+    FX.hud.jonlantir(tl, pR, 1.2, { dur, har: 0.1, ease: 'power1.out', davom: D - 1.2 });
+    tl.fromTo(q('.b-imza'), { opacity: 0 }, { opacity: 1, duration: 0.5 }, 1.2);
+    // 4) chiqish (ichki o'ram opacity — .clip ga tegilmaydi)
+    if (ch > 0) tl.to(q('.b-wrap'), { opacity: 0, duration: ch, ease: 'power1.in' }, Math.max(0.5, D - ch));
+    window.__timelines['fx-bob-shablon'] = tl;
+  };
+  (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(build);
+})();
+</script>
+</template>
+</body></html>

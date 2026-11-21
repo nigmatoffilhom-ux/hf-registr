@@ -1,0 +1,40 @@
+{
+  "$schema": "https://hyperframes.heygen.com/schema/registry-item.json",
+  "name": "hud-panel",
+  "type": "hyperframes:block",
+  "title": "HUD Panel",
+  "description": "Sahnaga HUD ko'rsatkich panelini qo'shadigan blok.",
+  "tags": [
+    "hud",
+    "overlay",
+    "interface"
+  ],
+  "author": "hf-registr",
+  "dimensions": {
+    "width": 1920,
+    "height": 1080
+  },
+  "duration": 4.0,
+  "files": [
+    {
+      "path": "animatsiya/anim.js",
+      "target": "compositions/animatsiya/anim.js",
+      "type": "hyperframes:asset"
+    },
+    {
+      "path": "hud-panel/hud-panel.html",
+      "target": "compositions/hud-panel/hud-panel.html",
+      "type": "hyperframes:composition"
+    },
+    {
+      "path": "hud-panel/hud.css",
+      "target": "compositions/hud-panel/hud.css",
+      "type": "hyperframes:asset"
+    },
+    {
+      "path": "hud-panel/hud.js",
+      "target": "compositions/hud-panel/hud.js",
+      "type": "hyperframes:asset"
+    }
+  ]
+}

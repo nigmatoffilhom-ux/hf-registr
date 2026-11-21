@@ -1,0 +1,280 @@
+<!doctype html>
+<!--
+  fx-3d-mini — Three.js r160 (lokal: vendor/m3-three.js, internet kerak emas): bitta 3D obyekt kadr markazida.
+  shakl: kub | shar | kapsula | tor | telefon-ramka | noutbuk-ramka | glb. Qurilma ramkasida ekran: chizma | rasm | video.
+  Deterministik: har kadr faqat vaqtdan hisoblanadi (Math.random yo'q, GLB animatsiyasi mixer.setTime bilan).
+  Host'ga ulash (o'rnatish: hyperframes add 3d-mini):
+  <div data-composition-id="fx-3d-mini" data-composition-src="3d-mini/3d-mini.html"
+       data-variable-values='{"shakl":"telefon-ramka","rang":"#2b2f3a","ekran":"rasm","rasm":"assets/r01.jpg"}'
+       data-start="0" data-duration="5" data-track-index="5" data-width="1920" data-height="1080"></div>
+  Yo'llar (rasm, glb) loyiha ildiziga nisbatan (assets/...). Bo'sh glb = papkadagi namuna-konus.glb.
+  Video ekran: host index.html ga <video id="ekran1" src="assets/x.mp4" muted data-start="0" data-duration="5" style="position:absolute;width:192px;height:108px;opacity:0">
+  qo'ying va "video":"#ekran1" bering (HyperFrames kadrlarni o'sha video uchun chiqaradi). Bo'sh = blokning namuna-ekran.mp4.
+-->
+<html data-composition-variables='[
+  {"id":"shakl","type":"enum","label":"Shakl","default":"kub","options":[
+    {"value":"kub","label":"Kub (yumaloq qirrali)"},{"value":"shar","label":"Shar"},{"value":"kapsula","label":"Kapsula"},
+    {"value":"tor","label":"Tor (halqa)"},{"value":"telefon-ramka","label":"Telefon ramkasi"},
+    {"value":"noutbuk-ramka","label":"Noutbuk ramkasi"},{"value":"glb","label":"GLB model"}]},
+  {"id":"rang","type":"color","label":"Rang","default":"#ffd166"},
+  {"id":"material","type":"enum","label":"Material","default":"avto","options":[
+    {"value":"avto","label":"Avto (GLB: asl, qolgani: oynali)"},{"value":"matt","label":"Matt"},
+    {"value":"oynali","label":"Oynali (metall)"},{"value":"shisha","label":"Shisha"},{"value":"asl","label":"GLB asl materiali"}]},
+  {"id":"aylanish","type":"number","label":"Aylanish (marta/s, 0 = turadi)","default":0.12,"step":0.02},
+  {"id":"kirish","type":"enum","label":"Kirish","default":"ochilish","options":[
+    {"value":"ochilish","label":"Kattalashib ochiladi"},{"value":"pastdan","label":"Pastdan koʻtariladi"},
+    {"value":"aylanib","label":"Aylanib keladi"},{"value":"chuqurlikdan","label":"Chuqurlikdan uchib"},{"value":"yoq","label":"Animatsiyasiz"}]},
+  {"id":"ekran","type":"enum","label":"Qurilma ekrani","default":"chizma","options":[
+    {"value":"chizma","label":"Chizma (grafik)"},{"value":"rasm","label":"Rasm"},{"value":"video","label":"Video"}]},
+  {"id":"rasm","type":"string","label":"Ekran rasmi yoʻli","default":""},
+  {"id":"video","type":"string","label":"Ekran videosi: boʻsh = namuna, #id = host dagi video","default":""},
+  {"id":"ekran_matn","type":"string","label":"Chizma sarlavhasi","default":"NEGA?"},
+  {"id":"glb","type":"string","label":"GLB yoʻli (boʻsh = namuna)","default":""},
+  {"id":"olcham","type":"number","label":"Oʻlcham (1 = kadr balandligining ~60%)","default":1,"min":0.2,"step":0.1},
+  {"id":"fon","type":"boolean","label":"Toʻq fon va soya","default":true},
+  {"id":"davom","type":"number","label":"Davomiylik (s)","default":5,"min":1,"step":0.5}
+]'>
+<head><meta charset="UTF-8" /></head>
+<body>
+<template>
+<style>
+  #root{position:absolute;inset:0;overflow:hidden}
+  .m3-cv{position:absolute;inset:0;width:100%;height:100%;display:block}
+  .m3-media{position:absolute;left:0;top:0;width:192px;height:108px;opacity:0;pointer-events:none;overflow:hidden}
+  .m3-media video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+</style>
+<div id="root" data-composition-id="fx-3d-mini">
+  <canvas class="m3-cv"></canvas>
+  <a class="m3-yol" href="namuna-konus.glb" hidden></a>
+  <div class="m3-media"><video class="m3-video" src="namuna-ekran.mp4" muted playsinline data-start="0"></video></div>
+</div>
+<script class="m3-vendor" src="vendor/m3-three.js"></script>
+<script>
+(function(){
+  const V = window.__hyperframes.getVariables() || {};
+  const q = s => document.querySelector(s);
+  const root = q('#root');
+  // O'lcham host'dan (data-width/height) yoki joyidan — bir kadrda bir nechta nusxa bo'lsa ham to'g'ri
+  const olc = root.closest('[data-width]');
+  const W = Number(olc && olc.getAttribute('data-width')) || 1920, H = Number(olc && olc.getAttribute('data-height')) || 1080;
+  const num = (v, d) => (v === undefined || v === null || v === '' || isNaN(Number(v))) ? d : Number(v);
+  const DUR = num(V.davom, 5);
+  const SHAKL = V.shakl || 'kub';
+  const RANG = V.rang || '#ffd166';
+  const AYL = num(V.aylanish, 0.12);
+  const KIRISH = V.kirish || 'ochilish';
+  const OLCHAM = num(V.olcham, 1);
+  const FON = !(V.fon === false || V.fon === 'false');
+  let MAT = V.material || 'avto';
+  if (MAT === 'avto') MAT = SHAKL === 'glb' ? 'asl' : 'oynali';
+  const QURILMA = SHAKL === 'telefon-ramka' || SHAKL === 'noutbuk-ramka';
+  const EKRAN = V.ekran || 'chizma';
+
+  // Seeded PRNG (mulberry32) — "tasodifiy" ko'rinish, lekin har safar bir xil
+  function prng(seed) { return function () { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  const clamp01 = t => Math.max(0, Math.min(1, t));
+  const expoOut = t => t >= 1 ? 1 : 1 - Math.pow(2, -10 * t);
+  const backOut = t => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2); };
+  const smooth = t => t * t * (3 - 2 * t);
+
+  // Blok papkasi (nusxa qayerga ko'chirilsa ham): HyperFrames <a href> ni blok papkasiga qayta yozadi
+  const vEl = q('script.m3-vendor');
+  const aYol = q('.m3-yol');
+  const BASE = aYol && aYol.href ? aYol.href.replace(/namuna-konus\.glb.*$/, '') : '';
+  const yol = p => /^(https?:|data:|blob:|\/)/.test(p) ? p : new URL(p, document.baseURI).href;
+
+  const three = window.M3THREE ? Promise.resolve(window.M3THREE) : new Promise((res, rej) => {
+    if (vEl) { vEl.addEventListener('load', () => res(window.M3THREE)); vEl.addEventListener('error', rej); return; }
+    const s = document.createElement('script'); s.src = 'vendor/m3-three.js'; s.onload = () => res(window.M3THREE); s.onerror = rej; document.head.appendChild(s);
+  });
+
+  const build = three.then(async THREE => {
+    const canvas = q('.m3-cv');
+    const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, preserveDrawingBuffer: true });
+    renderer.setPixelRatio(1);
+    renderer.setSize(W, H, false);
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.0;
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    const scene = new THREE.Scene();
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    scene.environment = pmrem.fromScene(new THREE.RoomEnvironment(renderer), 0.04).texture;
+    const camera = new THREE.PerspectiveCamera(30, W / H, 0.1, 200);
+
+    scene.add(new THREE.HemisphereLight(0xcfe0ff, 0x10131c, 0.9));
+    const key = new THREE.DirectionalLight(0xffffff, 2.0); key.position.set(-4, 6, 6); scene.add(key);
+    const rim = new THREE.DirectionalLight(0x7fa6ff, 1.6); rim.position.set(5, 2, -5); scene.add(rim);
+
+    function canvasTex(w, h, draw) { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; }
+    if (FON) {
+      const bg = new THREE.Mesh(new THREE.PlaneGeometry(80, 45), new THREE.MeshBasicMaterial({ toneMapped: false, map: canvasTex(512, 288, (g, w, h) => {
+        const r = g.createRadialGradient(w / 2, h * 0.42, 10, w / 2, h * 0.5, w * 0.62);
+        r.addColorStop(0, '#1b2a4a'); r.addColorStop(0.55, '#0a1020'); r.addColorStop(1, '#03050a'); g.fillStyle = r; g.fillRect(0, 0, w, h);
+        const rnd = prng(7); for (let i = 0; i < 70; i++) { g.fillStyle = `rgba(160,190,255,${0.05 + rnd() * 0.18})`; g.beginPath(); g.arc(rnd() * w, rnd() * h, 0.6 + rnd() * 1.4, 0, 7); g.fill(); }
+      }) }));
+      bg.position.z = -14; scene.add(bg);
+    }
+
+    function material() {
+      const c = new THREE.Color(RANG);
+      if (MAT === 'matt') return new THREE.MeshStandardMaterial({ color: c, roughness: 0.82, metalness: 0.0 });
+      // Shisha: to'q fonda qorayib ketmasin — kuchli aks, rangli ozgina ichki nur, yengil yutilish
+      if (MAT === 'shisha') return new THREE.MeshPhysicalMaterial({ color: c, roughness: 0.06, metalness: 0, transmission: 0.95, thickness: 0.35, ior: 1.5, clearcoat: 1, clearcoatRoughness: 0.04, attenuationColor: c, attenuationDistance: 6, specularIntensity: 1, envMapIntensity: 2.2, emissive: c.clone().multiplyScalar(0.16), side: THREE.DoubleSide });
+      return new THREE.MeshPhysicalMaterial({ color: c, roughness: 0.16, metalness: 0.9, clearcoat: 0.6, clearcoatRoughness: 0.1, envMapIntensity: 1.3 });
+    }
+
+    // ---- Ekran teksturasi (qurilmalar) ----
+    let ekranTex = null, ekranDraw = null;
+    function roundRect(w, h, r) { const s = new THREE.Shape(), x = -w / 2, y = -h / 2;
+      s.moveTo(x + r, y); s.lineTo(x + w - r, y); s.quadraticCurveTo(x + w, y, x + w, y + r); s.lineTo(x + w, y + h - r); s.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      s.lineTo(x + r, y + h); s.quadraticCurveTo(x, y + h, x, y + h - r); s.lineTo(x, y + r); s.quadraticCurveTo(x, y, x + r, y); return s; }
+    function shapeUV(geo) { geo.computeBoundingBox(); const b = geo.boundingBox, p = geo.attributes.position, uv = geo.attributes.uv;
+      for (let i = 0; i < p.count; i++) uv.setXY(i, (p.getX(i) - b.min.x) / (b.max.x - b.min.x), (p.getY(i) - b.min.y) / (b.max.y - b.min.y)); uv.needsUpdate = true; return geo; }
+    async function ekranTayyorla(cw, ch) {
+      const c = document.createElement('canvas'); c.width = cw; c.height = ch; const g = c.getContext('2d');
+      ekranTex = new THREE.CanvasTexture(c); ekranTex.colorSpace = THREE.SRGBColorSpace; ekranTex.anisotropy = 4;
+      const cover = (src, sw, sh) => { const k = Math.max(cw / sw, ch / sh), w = sw * k, h = sh * k; g.drawImage(src, (cw - w) / 2, (ch - h) / 2, w, h); };
+      if (EKRAN === 'rasm' && V.rasm) {
+        const img = new Image(); img.src = yol(V.rasm);
+        try { await img.decode(); cover(img, img.naturalWidth, img.naturalHeight); ekranDraw = null; return; } catch (e) { console.warn('[fx-3d-mini] rasm ochilmadi:', V.rasm); }
+      }
+      if (EKRAN === 'video') {
+        // "video" bo'sh = blokning namuna-ekran.mp4; "#id" = host index.html dagi <video id="..."> (o'z videongiz)
+        const vid = V.video ? (root.getRootNode().getElementById(String(V.video).replace(/^#/, '')) || document.getElementById(String(V.video).replace(/^#/, ''))) : q('.m3-video');
+        if (!vid) console.warn('[fx-3d-mini] video topilmadi:', V.video);
+        ekranDraw = () => {
+          // Renderda HyperFrames videoni <img class="__render_frame__"> kadri bilan almashtiradi — o'shani o'qiymiz
+          const fr = vid && vid.nextElementSibling && vid.nextElementSibling.classList.contains('__render_frame__') ? vid.nextElementSibling : null;
+          if (fr && fr.complete && fr.naturalWidth) cover(fr, fr.naturalWidth, fr.naturalHeight);
+          else if (vid && vid.readyState >= 2 && vid.videoWidth) cover(vid, vid.videoWidth, vid.videoHeight);
+          else return false;
+          return true;
+        };
+        g.fillStyle = '#05070d'; g.fillRect(0, 0, cw, ch); return;
+      }
+      // chizma: sarlavha + o'sib boradigan ustunlar + chiziq (vaqtga bog'liq, seeded)
+      const rnd = prng(42), bars = Array.from({ length: 7 }, () => 0.3 + rnd() * 0.7), title = String(V.ekran_matn != null ? V.ekran_matn : 'NEGA?');
+      ekranDraw = t => {
+        const gr = g.createLinearGradient(0, 0, cw, ch); gr.addColorStop(0, '#16213d'); gr.addColorStop(1, '#070a14'); g.fillStyle = gr; g.fillRect(0, 0, cw, ch);
+        const u = Math.min(cw, ch) / 100;
+        g.fillStyle = RANG; g.fillRect(cw * 0.08, ch * 0.08, u * 10, u * 1.6);
+        g.fillStyle = '#ffffff'; g.font = `800 ${u * 11}px Inter, Arial, sans-serif`; g.textBaseline = 'top'; g.fillText(title, cw * 0.08, ch * 0.08 + u * 4);
+        const x0 = cw * 0.08, x1 = cw * 0.92, y1 = ch * 0.9, y0 = ch * 0.38, bw = (x1 - x0) / bars.length;
+        g.strokeStyle = 'rgba(255,255,255,.12)'; g.lineWidth = Math.max(1, u * 0.3);
+        for (let i = 0; i <= 4; i++) { const y = y0 + (y1 - y0) * i / 4; g.beginPath(); g.moveTo(x0, y); g.lineTo(x1, y); g.stroke(); }
+        bars.forEach((b, i) => { const p = expoOut(clamp01((t - 0.6 - i * 0.12) / 1.2)); const h = (y1 - y0) * b * p;
+          g.fillStyle = i === bars.length - 1 ? RANG : 'rgba(140,175,255,.75)'; g.fillRect(x0 + i * bw + bw * 0.18, y1 - h, bw * 0.64, h); });
+        const lp = clamp01((t - 1.2) / 1.6); g.strokeStyle = '#ffffff'; g.lineWidth = u * 0.9; g.beginPath();
+        bars.forEach((b, i) => { if (i / (bars.length - 1) > lp) return; const x = x0 + i * bw + bw / 2, y = y1 - (y1 - y0) * b - u * 4; i ? g.lineTo(x, y) : g.moveTo(x, y); }); g.stroke();
+        return true;
+      };
+    }
+    const ekranMat = () => new THREE.MeshBasicMaterial({ map: ekranTex, toneMapped: false });
+
+    // ---- Obyekt ----
+    const obj = new THREE.Group(), pivot = new THREE.Group(); pivot.add(obj); scene.add(pivot);
+    let mixer = null, lid = null, glbXato = false;
+    const mat = material();
+    if (SHAKL === 'kub') obj.add(new THREE.Mesh(new THREE.RoundedBoxGeometry(1.6, 1.6, 1.6, 6, 0.18), mat));
+    else if (SHAKL === 'shar') obj.add(new THREE.Mesh(new THREE.SphereGeometry(1.0, 96, 64), mat));
+    else if (SHAKL === 'kapsula') { const m = new THREE.Mesh(new THREE.CapsuleGeometry(0.62, 1.3, 24, 64), mat); m.rotation.z = 0.5; obj.add(m); }
+    else if (SHAKL === 'tor') { const m = new THREE.Mesh(new THREE.TorusGeometry(0.95, 0.36, 64, 160), mat); m.rotation.x = 0.9; obj.add(m); }
+    else if (SHAKL === 'telefon-ramka') {
+      const w = 1.0, h = 2.06, d = 0.09;
+      const body = new THREE.ExtrudeGeometry(roundRect(w, h, 0.16), { depth: d, bevelEnabled: true, bevelThickness: 0.025, bevelSize: 0.025, bevelSegments: 4, curveSegments: 24 });
+      body.translate(0, 0, -d / 2); obj.add(new THREE.Mesh(body, mat));
+      await ekranTayyorla(540, 1170);
+      const sc = new THREE.Mesh(shapeUV(new THREE.ShapeGeometry(roundRect(w - 0.07, h - 0.07, 0.13), 24)), ekranMat()); sc.position.z = d / 2 + 0.026; obj.add(sc);
+      const isl = new THREE.Mesh(new THREE.CapsuleGeometry(0.035, 0.17, 8, 24), new THREE.MeshBasicMaterial({ color: 0x000000 })); isl.rotation.z = Math.PI / 2; isl.position.set(0, h / 2 - 0.1, d / 2 + 0.03); obj.add(isl);
+      const btn = new THREE.MeshStandardMaterial({ color: new THREE.Color(RANG).multiplyScalar(0.7), roughness: 0.3, metalness: 0.8 });
+      [[w / 2 + 0.03, 0.45, 0.22], [-w / 2 - 0.03, 0.55, 0.12], [-w / 2 - 0.03, 0.32, 0.16]].forEach(([x, y, l]) => { const b = new THREE.Mesh(new THREE.BoxGeometry(0.03, l, 0.05), btn); b.position.set(x, y, 0); obj.add(b); });
+    } else if (SHAKL === 'noutbuk-ramka') {
+      const bw = 2.6, bd = 1.75, bt = 0.08;
+      const base = new THREE.Mesh(new THREE.RoundedBoxGeometry(bw, bt, bd, 4, 0.035), mat); base.position.y = bt / 2; obj.add(base);
+      const kb = new THREE.Mesh(new THREE.PlaneGeometry(bw * 0.86, bd * 0.42), new THREE.MeshStandardMaterial({ color: 0x0c0e14, roughness: 0.7 })); kb.rotation.x = -Math.PI / 2; kb.position.set(0, bt + 0.002, -bd * 0.16); obj.add(kb);
+      const tp = new THREE.Mesh(new THREE.PlaneGeometry(bw * 0.32, bd * 0.26), new THREE.MeshStandardMaterial({ color: new THREE.Color(RANG).multiplyScalar(0.6), roughness: 0.35, metalness: 0.6 })); tp.rotation.x = -Math.PI / 2; tp.position.set(0, bt + 0.002, bd * 0.3); obj.add(tp);
+      lid = new THREE.Group(); lid.position.set(0, bt, -bd / 2 + 0.03); obj.add(lid);
+      const lh = 1.68, lt = 0.05;
+      const lb = new THREE.Mesh(new THREE.RoundedBoxGeometry(bw, lh, lt, 4, 0.022), mat); lb.position.set(0, lh / 2, -lt / 2); lid.add(lb);
+      const bez = new THREE.Mesh(new THREE.PlaneGeometry(bw - 0.06, lh - 0.06), new THREE.MeshBasicMaterial({ color: 0x050608 })); bez.position.set(0, lh / 2, 0.002); lid.add(bez);
+      await ekranTayyorla(1280, 800);
+      const sw = bw - 0.2, sh = sw * 10 / 16;
+      const sc = new THREE.Mesh(new THREE.PlaneGeometry(sw, sh), ekranMat()); sc.position.set(0, lh / 2 + 0.02, 0.004); lid.add(sc);
+      obj.position.y = -0.55;
+    } else if (SHAKL === 'glb') {
+      const url = V.glb ? yol(V.glb) : BASE + 'namuna-konus.glb';
+      try {
+        const gltf = await new THREE.GLTFLoader().loadAsync(url);
+        const m = gltf.scene;
+        // asl: GLB rangi oqarib ketmasin (xona aksi kuchli) — aksni pasaytiramiz
+        if (MAT !== 'asl') m.traverse(o => { if (o.isMesh) o.material = mat; });
+        else m.traverse(o => { if (o.isMesh && o.material) [].concat(o.material).forEach(mm => { mm.envMapIntensity = 0.45; }); });
+        obj.add(m);
+        if (gltf.animations && gltf.animations.length) { mixer = new THREE.AnimationMixer(m); gltf.animations.forEach(c => mixer.clipAction(c).play()); }
+      } catch (e) {
+        console.warn('[fx-3d-mini] GLB ochilmadi:', url, e); glbXato = true;
+        obj.add(new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.4, 1.4), new THREE.MeshBasicMaterial({ color: 0xff3344, wireframe: true })));
+      }
+    }
+
+    // Kadrga sig'dirish: obyekt markazga, radius = olcham * kadr balandligining ~30%
+    if (mixer) mixer.setTime(0);
+    if (lid) lid.rotation.x = -0.26;
+    const box = new THREE.Box3().setFromObject(obj), sph = box.getBoundingSphere(new THREE.Sphere());
+    obj.position.sub(sph.center);
+    const k = 1.25 / (sph.radius || 1); obj.position.multiplyScalar(k); obj.scale.setScalar(k);
+    const R = 1.25;
+    const fov = THREE.MathUtils.degToRad(camera.fov);
+    const camZ = R / Math.tan(fov / 2) / Math.min(1, W / H) / (0.62 * OLCHAM); // 9:16: kenglikning ~62%
+    const tilt = SHAKL === 'noutbuk-ramka' ? 0.32 : 0.12;
+    camera.position.set(0, Math.sin(tilt) * camZ, Math.cos(tilt) * camZ);
+    camera.lookAt(0, 0, 0);
+
+    let soya = null;
+    if (FON) {
+      soya = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 4.2), new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, toneMapped: false, map: canvasTex(256, 256, (g, w, h) => {
+        const r = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2); r.addColorStop(0, 'rgba(0,0,0,.6)'); r.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = r; g.fillRect(0, 0, w, h); }) }));
+      soya.rotation.x = -Math.PI / 2; soya.position.y = -R * 1.12; scene.add(soya);
+    }
+
+    let lastT = 0;
+    function renderAt(t) {
+      lastT = t;
+      const p = KIRISH === 'yoq' ? 1 : clamp01((t - 0.1) / 1.3);
+      const e = expoOut(p);
+      let s = 1, ox = 0, oy = 0, oz = 0, ry = 0, rx = 0;
+      if (KIRISH === 'ochilish') { s = Math.max(0.001, backOut(clamp01((t - 0.1) / 0.9))); ry = -1.4 * (1 - e); }
+      else if (KIRISH === 'pastdan') { oy = -4.2 * (1 - e); rx = 0.5 * (1 - e); }
+      else if (KIRISH === 'aylanib') { ry = -Math.PI * 2 * (1 - e); s = 0.55 + 0.45 * e; }
+      else if (KIRISH === 'chuqurlikdan') { oz = -26 * (1 - e); rx = -0.7 * (1 - e); ry = 0.9 * (1 - e); }
+      const bob = Math.sin(t * 1.6) * 0.04;
+      pivot.position.set(ox, oy + bob, oz);
+      pivot.scale.setScalar(s);
+      const yaw0 = QURILMA ? -0.3 : 0.5;
+      // Qurilmada ekran doim ko'rinsin: to'liq aylanish o'rniga ±35° tebranish (davri 1/aylanish)
+      const aylY = QURILMA ? 0.6 * Math.sin(2 * Math.PI * AYL * t) : 2 * Math.PI * AYL * t;
+      pivot.rotation.set(rx + (QURILMA ? 0 : 0.18), yaw0 + ry + aylY + 0.08 * Math.sin(t * 0.8), 0);
+      if (lid) lid.rotation.x = KIRISH === 'yoq' ? -0.26 : Math.PI / 2 - (Math.PI / 2 + 0.26) * smooth(clamp01((t - 0.5) / 1.3));
+      if (mixer) mixer.setTime(t);
+      if (soya) { soya.material.opacity = (KIRISH === 'pastdan' || KIRISH === 'chuqurlikdan' ? e : 1) * (1 - bob * 2); soya.scale.setScalar(s); }
+      if (ekranDraw && ekranTex) { if (ekranDraw(t) !== false) ekranTex.needsUpdate = true; }
+      renderer.render(scene, camera);
+    }
+
+    const tl = gsap.timeline({ paused: true });
+    const st = { t: 0 };
+    tl.to(st, { t: DUR, duration: DUR, ease: 'none', onUpdate: () => renderAt(st.t) }, 0);
+    // Video kadri kech kelsa (render kadr almashtirgach hf-seek qayta yuboriladi) — shu lokal vaqtni qayta chizamiz
+    window.addEventListener('hf-seek', () => renderAt(lastT));
+    renderAt(0);
+    if (glbXato) root.setAttribute('data-m3-xato', 'glb');
+    window.__timelines['fx-3d-mini'] = tl;
+    if (window.__hfForceTimelineRebind) window.__hfForceTimelineRebind();
+  });
+  window.__hf = window.__hf || {}; window.__hf.buildReady = window.__hf.buildReady || {};
+  window.__m3n = (window.__m3n || 0) + 1;
+  window.__hf.buildReady['fx-3d-mini-' + window.__m3n] = build;
+})();
+</script>
+</template>
+</body></html>

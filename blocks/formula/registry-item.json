@@ -1,0 +1,150 @@
+{
+  "$schema": "https://hyperframes.heygen.com/schema/registry-item.json",
+  "name": "formula",
+  "type": "hyperframes:block",
+  "title": "Formula",
+  "description": "LaTeX yozuvidan matematik formulalarni chiqaradigan blok; KaTeX fayllari bilan.",
+  "tags": [
+    "math",
+    "formula",
+    "latex"
+  ],
+  "author": "hf-registr",
+  "dimensions": {
+    "width": 1920,
+    "height": 1080
+  },
+  "duration": 4.0,
+  "files": [
+    {
+      "path": "formula/formula.css",
+      "target": "compositions/formula/formula.css",
+      "type": "hyperframes:asset"
+    },
+    {
+      "path": "formula/formula.html",
+      "target": "compositions/formula/formula.html",
+      "type": "hyperframes:composition"
+    },
+    {
+      "path": "formula/formula.js",
+      "target": "compositions/formula/formula.js",
+      "type": "hyperframes:asset"
+    },
+    {
+      "path": "formula/vendor/KATEX-LICENSE.txt",
+      "target": "compositions/formula/vendor/KATEX-LICENSE.txt",
+      "type": "hyperframes:asset"
+    },
+    {
+      "path": "formula/vendor/fonts/KaTeX_AMS-Regular.woff2",
+      "target": "compositions/formula/vendor/fonts/KaTeX_AMS-Regular.woff2",
+      "type": "hyperframes:asset"
+    },
+    {
+      "path": "formula/vendor/fonts/KaTeX_Caligraphic-Bold.woff2",
+      "target": "compositions/formula/vendor/fonts/KaTeX_Caligraphic-Bold.woff2",
+      "type": "hyperframes:asset"
+    },
+    {
+      "path": "formula/vendor/fonts/KaTeX_Caligraphic-Regular.woff2",
+      "target": "compositions/formula/vendor/fonts/KaTeX_Caligraphic-Regular.woff2",
+      "type": "hyperframes:asset"
+    },
+    {
+      "path": "formula/vendor/fonts/KaTeX_Fraktur-Bold.woff2",
+      "target": "compositions/formula/vendor/fonts/KaTeX_Fraktur-Bold.woff2",
+      "type": "hyperframes:asset"
+    },
+    {
+      "path": "formula/vendor/fonts/KaTeX_Fraktur-Regular.woff2",
+      "target": "compositions/formula/vendor/fonts/KaTeX_Fraktur-Regular.woff2",
+      "type": "hyperframes:asset"
+    },
+    {
+      "path": "formula/vendor/fonts/KaTeX_Main-Bold.woff2",
+      "target": "compositions/formula/vendor/fonts/KaTeX_Main-Bold.woff2",
+      "type": "hyperframes:asset"
+    },
+    {
+      "path": "formula/vendor/fonts/KaTeX_Main-BoldItalic.woff2",
+      "target": "compositions/formula/vendor/fonts/KaTeX_Main-BoldItalic.woff2",
+      "type": "hyperframes:asset"
+    },
+    {
+      "path": "formula/vendor/fonts/KaTeX_Main-Italic.woff2",
+      "target": "compositions/formula/vendor/fonts/KaTeX_Main-Italic.woff2",
+      "type": "hyperframes:asset"
+    },
+    {
+      "path": "formula/vendor/fonts/KaTeX_Main-Regular.woff2",
+      "target": "compositions/formula/vendor/fonts/KaTeX_Main-Regular.woff2",
+      "type": "hyperframes:asset"
+    },
+    {
+      "path": "formula/vendor/fonts/KaTeX_Math-BoldItalic.woff2",
+      "target": "compositions/formula/vendor/fonts/KaTeX_Math-BoldItalic.woff2",
+      "type": "hyperframes:asset"
+    },
+    {
+      "path": "formula/vendor/fonts/KaTeX_Math-Italic.woff2",
+      "target": "compositions/formula/vendor/fonts/KaTeX_Math-Italic.woff2",
+      "type": "hyperframes:asset"
+    },
+    {
+      "path": "formula/vendor/fonts/KaTeX_SansSerif-Bold.woff2",
+      "target": "compositions/formula/vendor/fonts/KaTeX_SansSerif-Bold.woff2",
+      "type": "hyperframes:asset"
+    },
+    {
+      "path": "formula/vendor/fonts/KaTeX_SansSerif-Italic.woff2",
+      "target": "compositions/formula/vendor/fonts/KaTeX_SansSerif-Italic.woff2",
+      "type": "hyperframes:asset"
+    },
+    {
+      "path": "formula/vendor/fonts/KaTeX_SansSerif-Regular.woff2",
+      "target": "compositions/formula/vendor/fonts/KaTeX_SansSerif-Regular.woff2",
+      "type": "hyperframes:asset"
+    },
+    {
+      "path": "formula/vendor/fonts/KaTeX_Script-Regular.woff2",
+      "target": "compositions/formula/vendor/fonts/KaTeX_Script-Regular.woff2",
+      "type": "hyperframes:asset"
+    },
+    {
+      "path": "formula/vendor/fonts/KaTeX_Size1-Regular.woff2",
+      "target": "compositions/formula/vendor/fonts/KaTeX_Size1-Regular.woff2",
+      "type": "hyperframes:asset"
+    },
+    {
+      "path": "formula/vendor/fonts/KaTeX_Size2-Regular.woff2",
+      "target": "compositions/formula/vendor/fonts/KaTeX_Size2-Regular.woff2",
+      "type": "hyperframes:asset"
+    },
+    {
+      "path": "formula/vendor/fonts/KaTeX_Size3-Regular.woff2",
+      "target": "compositions/formula/vendor/fonts/KaTeX_Size3-Regular.woff2",
+      "type": "hyperframes:asset"
+    },
+    {
+      "path": "formula/vendor/fonts/KaTeX_Size4-Regular.woff2",
+      "target": "compositions/formula/vendor/fonts/KaTeX_Size4-Regular.woff2",
+      "type": "hyperframes:asset"
+    },
+    {
+      "path": "formula/vendor/fonts/KaTeX_Typewriter-Regular.woff2",
+      "target": "compositions/formula/vendor/fonts/KaTeX_Typewriter-Regular.woff2",
+      "type": "hyperframes:asset"
+    },
+    {
+      "path": "formula/vendor/katex.min.css",
+      "target": "compositions/formula/vendor/katex.min.css",
+      "type": "hyperframes:asset"
+    },
+    {
+      "path": "formula/vendor/katex.min.js",
+      "target": "compositions/formula/vendor/katex.min.js",
+      "type": "hyperframes:asset"
+    }
+  ]
+}

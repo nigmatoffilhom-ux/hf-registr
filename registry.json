@@ -1,0 +1,99 @@
+{
+  "$schema": "https://hyperframes.heygen.com/schema/registry.json",
+  "name": "hf-registr",
+  "homepage": "https://github.com/nigmatoffilhom-ux/hf-registr",
+  "items": [
+    {
+      "name": "subtitr-3d",
+      "type": "hyperframes:block"
+    },
+    {
+      "name": "subtitr-kinetik",
+      "type": "hyperframes:block"
+    },
+    {
+      "name": "sarlavha-3d",
+      "type": "hyperframes:block"
+    },
+    {
+      "name": "sarlavha-kinetik",
+      "type": "hyperframes:block"
+    },
+    {
+      "name": "lower-third",
+      "type": "hyperframes:block"
+    },
+    {
+      "name": "ai-belgi",
+      "type": "hyperframes:block"
+    },
+    {
+      "name": "ikonka",
+      "type": "hyperframes:block"
+    },
+    {
+      "name": "3d-mini",
+      "type": "hyperframes:block"
+    },
+    {
+      "name": "wire-neon",
+      "type": "hyperframes:block"
+    },
+    {
+      "name": "zarra-morf",
+      "type": "hyperframes:block"
+    },
+    {
+      "name": "exploded-view",
+      "type": "hyperframes:block"
+    },
+    {
+      "name": "kamera-yol",
+      "type": "hyperframes:block"
+    },
+    {
+      "name": "halftone-reveal",
+      "type": "hyperframes:block"
+    },
+    {
+      "name": "ui-mockup",
+      "type": "hyperframes:block"
+    },
+    {
+      "name": "uslub-sahna",
+      "type": "hyperframes:block"
+    },
+    {
+      "name": "formula",
+      "type": "hyperframes:block"
+    },
+    {
+      "name": "hud-panel",
+      "type": "hyperframes:block"
+    },
+    {
+      "name": "bob-shablon",
+      "type": "hyperframes:block"
+    },
+    {
+      "name": "cta-kalit",
+      "type": "hyperframes:block"
+    },
+    {
+      "name": "pop-subtitr",
+      "type": "hyperframes:block"
+    },
+    {
+      "name": "geo",
+      "type": "hyperframes:block"
+    },
+    {
+      "name": "maska-blok",
+      "type": "hyperframes:block"
+    },
+    {
+      "name": "shader",
+      "type": "hyperframes:block"
+    }
+  ]
+}

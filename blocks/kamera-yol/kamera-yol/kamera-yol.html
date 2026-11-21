@@ -1,0 +1,110 @@
+<!doctype html>
+<!--
+  fx-kamera-yol — 3D kamera yo'li: kalit nuqtalar (pozitsiya, nishon, fov, vaqt) bo'yicha silliq (CatmullRom) uchadigan kamera. Sahna: neon wireframe obyektlar + setka-pol (wire-neon uslubi).
+  yol = orbit | dolly | tepa (yuqoridan, top-down) | aralash (orbit -> dolly -> tepa)  YOKI kalit nuqtalar JSON:
+        [{"t":0,"p":[0,2,9],"k":[0,0,0],"fov":38},{"t":3,"p":[6,2,5],"k":[0,0,0]},{"t":6,"p":[0,9,1],"k":[0,0,0]}]   (t — blok ichidagi soniya, p — kamera, k — qaragan nuqta)
+  ease = inout (har kalitda yumshoq to'xtaydi, "swoop") | chiziq (kalitlardan tekis oqib o'tadi).
+  Seek-safe: kamera faqat vaqtdan hisoblanadi (proxy tween), Math.random yo'q, rAF yo'q. Boshqa blok ham foydalanishi uchun: window.FX.kamera3d[<host id>](t) -> {p:[x,y,z], k:[x,y,z], fov}.
+  Host (ulash.py: python3 -I ulash.py kamera-yol --loyiha X --var yol=aralash):
+  <div data-composition-id="fx-kamera-yol" data-composition-src="kamera-yol/kamera-yol.html" data-variable-values='{"yol":"aralash","davom":8}'
+       data-start="0" data-duration="8" data-track-index="5" data-width="1920" data-height="1080"></div>
+-->
+<html data-composition-variables='[
+  {"id":"yol","type":"string","label":"Yo‘l: orbit | dolly | tepa | aralash yoki kalit nuqtalar JSON","default":"aralash"},
+  {"id":"ease","type":"enum","label":"Yumshatish","default":"inout","options":[{"value":"inout","label":"Har kalitda yumshoq (swoop)"},{"value":"chiziq","label":"Tekis oqim"}]},
+  {"id":"obyektlar","type":"string","label":"Obyektlar JSON: [{shakl,p:[x,y,z],olcham,rang}] (bo‘sh = standart 5 ta)","default":""},
+  {"id":"rang","type":"color","label":"Rang (past)","default":"#ffa94d"},
+  {"id":"rang2","type":"color","label":"Rang 2 (yuqori)","default":"#3fb8ff"},
+  {"id":"pol","type":"boolean","label":"Setka-pol","default":true},
+  {"id":"fon","type":"boolean","label":"Qora fon","default":true},
+  {"id":"hud","type":"boolean","label":"Kamera HUD (X Y Z, vaqt)","default":true},
+  {"id":"kenglik","type":"number","label":"Chiziq qalinligi (px, 1080p da)","default":2.2,"step":0.2},
+  {"id":"bloom","type":"number","label":"Bloom kuchi","default":1,"min":0,"step":0.1},
+  {"id":"davom","type":"number","label":"Davomiylik (s)","default":8,"min":1,"step":0.5},
+  {"id":"urug","type":"number","label":"Seed","default":5}
+]'>
+<head><meta charset="UTF-8" /></head>
+<body>
+<template>
+<style>
+  #root{position:absolute;inset:0;overflow:hidden}
+  .ky-out{position:absolute;inset:0;width:100%;height:100%;display:block}
+  .ky-gl{position:absolute;left:0;top:0;width:8px;height:8px;opacity:0;pointer-events:none}
+  .ky-hud{position:absolute;left:5%;bottom:6%;font-family:'JetBrains Mono',ui-monospace,monospace;color:#f2efe6;letter-spacing:.04em;line-height:1.55;padding:.7em 1em;border:1px solid rgba(63,184,255,.5);background:rgba(4,6,12,.55);min-width:14em}
+  .ky-hud .k{color:rgba(242,239,230,.6);font-size:.78em}.ky-hud .v{color:#3fb8ff;font-weight:700}.ky-hud .r{display:flex;justify-content:space-between;gap:1.4em}
+  .ky-hud i{position:absolute;width:.8em;height:.8em;border:0 solid #3fb8ff}.ky-hud i.a{left:-1px;top:-1px;border-left-width:2px;border-top-width:2px}.ky-hud i.b{right:-1px;bottom:-1px;border-right-width:2px;border-bottom-width:2px}
+  .fx-tik .ky-hud{left:50%;transform:translateX(-50%);bottom:7%}
+</style>
+<div id="root" data-composition-id="fx-kamera-yol">
+  <canvas class="ky-out"></canvas>
+  <canvas class="ky-gl"></canvas>
+  <div class="ky-hud"><i class="a"></i><i class="b"></i>
+    <div class="r"><span class="k">KAMERA</span><span class="v ky-n">-</span></div>
+    <div class="r"><span class="k">X · Y · Z</span><span class="v ky-p">-</span></div>
+    <div class="r"><span class="k">VAQT</span><span class="v ky-t">0.0 s</span></div></div>
+</div>
+<script class="ky-vendor" src="../3d-mini/vendor/m3-three.js"></script>
+<script class="ky-ortak" src="../3d-ortak/fx3d.js"></script>
+<script>
+(function(){
+  const V = window.__hyperframes.getVariables() || {};
+  const q = s => document.querySelector(s);
+  const root = q('#root'); const olc = root.closest('[data-width]');
+  const W = Number(olc && olc.getAttribute('data-width')) || 1920, H = Number(olc && olc.getAttribute('data-height')) || 1080;
+  const hostId = (olc && olc.id) || 'kamera-yol';
+  const num = (v, d) => (v === undefined || v === null || v === '' || isNaN(Number(v))) ? d : Number(v);
+  const bool = (v, d) => (v === undefined || v === null || v === '') ? d : !(v === false || v === 'false' || v === 0);
+  const DUR = (Number(olc && olc.getAttribute('data-duration')) || num(V.davom, 8)), SEED = num(V.urug, 5), FON = bool(V.fon, true), POL = bool(V.pol, true), HUD = bool(V.hud, true), BLOOM = num(V.bloom, 1);
+  const KEN = num(V.kenglik, 2.2) * Math.min(W, H) / 1080;
+  const TIK = W < H * 0.8; root.classList.add(W > H * 1.2 ? 'fx-keng' : (TIK ? 'fx-tik' : 'fx-kv'));
+  const hud = q('.ky-hud'); hud.style.fontSize = Math.round(Math.min(W, H) * 0.026) + 'px'; if (!HUD) hud.style.display = 'none';
+  const waitFor = (sel, getter) => new Promise((res, rej) => { const g = getter(); if (g) return res(g); const el = q(sel); if (el) { el.addEventListener('load', () => res(getter())); el.addEventListener('error', rej); } else rej(new Error('skript yo\'q')); });
+  const build = waitFor('.ky-vendor', () => window.M3THREE).then(THREE => waitFor('.ky-ortak', () => window.FX3D).then(F => ({ THREE, F }))).then(({ THREE, F }) => {
+    const out = q('.ky-out'); out.width = W; out.height = H; const g2 = out.getContext('2d');
+    const gl = q('.ky-gl'); gl.width = W; gl.height = H;
+    const renderer = new THREE.WebGLRenderer({ canvas: gl, alpha: true, antialias: false, preserveDrawingBuffer: true, premultipliedAlpha: true });
+    renderer.setPixelRatio(1); renderer.setSize(W, H, false); renderer.setClearColor(0x000000, 0);
+    const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(38, W / H, 0.1, 300);
+    const A = new THREE.Color(V.rang || '#ffa94d'), B = new THREE.Color(V.rang2 || '#3fb8ff');
+    const DEF = [{ shakl: 'huni', p: [0, 0, 0], olcham: 1.3, rang: '#ffa94d', rang2: '#3fb8ff' }, { shakl: 'tor', p: [-3.8, -0.4, -1.4], olcham: 1.0, rang: '#8a5cf6', rang2: '#3fb8ff' },
+      { shakl: 'kub', p: [3.4, -0.35, -1.8], olcham: 0.9, rang: '#ff4f9a', rang2: '#ffa94d' }, { shakl: 'shar', p: [-1.3, -0.3, 3.6], olcham: 0.95, rang: '#3fb8ff', rang2: '#8a5cf6' }, { shakl: 'konus', p: [1.2, -0.2, -4.1], olcham: 1.0, rang: '#ffa94d', rang2: '#ff4f9a' }];
+    const OB = (() => { const j = F.json(V.obyektlar, null); return Array.isArray(j) && j.length ? j : DEF; })();
+    OB.forEach((o, i) => {
+      const a = new THREE.Color(o.rang || A), b = new THREE.Color(o.rang2 || B);
+      const m = F.fatLines(THREE, F.shape(THREE, o.shakl || 'kub', o), { W, H, kenglik: KEN, rangFn: (x, y) => a.clone().lerp(b, Math.max(0, Math.min(1, (y + 1) / 2))), seed: SEED + i, fog: [8, 48], reveal: false, hot: 0 });
+      const s = o.olcham || 1; m.scale.setScalar(s); m.position.set(o.p[0], o.p[1] + (s - 1) * 0.0, o.p[2]); m.userData.spin = 0.12 + 0.05 * i; scene.add(m); OB[i]._m = m;
+    });
+    if (POL) { const S = 22, base = new THREE.Color('#2f7fb0'); const fl = F.fatLines(THREE, F.gridPairs(S, 44, 22, -1.35), { W, H, kenglik: Math.max(1, KEN * 0.55), seed: 1, reveal: false, hot: 0, fog: [10, 70], rangFn: (x, y, z) => base.clone().multiplyScalar(Math.pow(Math.max(0, 1 - Math.hypot(x, z) / S), 1.7)) }); fl.renderOrder = -1; scene.add(fl); }
+    // kalit nuqtalar
+    const R = 3.2, adj = TIK ? Math.min(1.9, Math.sqrt(H / W) * 1.05) : 1;
+    let nomi = String(V.yol === undefined ? 'aralash' : V.yol), keys, jy = F.json(V.yol, null);
+    if (Array.isArray(jy)) { keys = jy; nomi = 'MAXSUS'; } else { keys = F.yolPreset(nomi === 'orbit' || nomi === 'dolly' || nomi === 'tepa' || nomi === 'aralash' ? nomi : 'aralash', R, DUR).map(k => ({ t: k.t, p: k.p.map(c => c * adj), k: k.k, fov: k.fov })); }
+    const yol = F.camPath(THREE, keys, V.ease === 'chiziq' ? 'chiziq' : 'inout');
+    window.FX = window.FX || {}; window.FX.kamera3d = window.FX.kamera3d || {};
+    window.FX.kamera3d[hostId] = t => { const r = yol(t); return { p: [r.p.x, r.p.y, r.p.z], k: [r.k.x, r.k.y, r.k.z], fov: r.fov || 38 }; };
+    q('.ky-n').textContent = nomi.toUpperCase();
+    const bgc = document.createElement('canvas'); bgc.width = 64; bgc.height = 36; const bg = bgc.getContext('2d');
+    const rg = bg.createRadialGradient(32, 15, 2, 32, 18, 40); rg.addColorStop(0, '#0b1426'); rg.addColorStop(0.6, '#04060c'); rg.addColorStop(1, '#020309'); bg.fillStyle = rg; bg.fillRect(0, 0, 64, 36);
+    const G = F.glowTayyor(W, H);
+    function renderAt(t) {
+      const c = yol(t); camera.position.copy(c.p); camera.up.set(0, 1, 0); camera.lookAt(c.k); const f = c.fov || 38; if (camera.fov !== f) { camera.fov = f; camera.updateProjectionMatrix(); }
+      OB.forEach(o => { o._m.rotation.y = t * o._m.userData.spin; });
+      renderer.render(scene, camera);
+      g2.setTransform(1, 0, 0, 1, 0, 0); g2.clearRect(0, 0, W, H); if (FON) g2.drawImage(bgc, 0, 0, W, H);
+      F.glow(g2, gl, W, H, G, { a1: 0.85 * BLOOM, a2: 0.95 * BLOOM });
+      if (HUD) { q('.ky-p').textContent = [c.p.x, c.p.y, c.p.z].map(v => (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(1)).join(' '); q('.ky-t').textContent = t.toFixed(1) + ' s'; }
+    }
+    const tl = gsap.timeline({ paused: true }), st = { t: 0 };
+    tl.to(st, { t: DUR, duration: DUR, ease: 'none', onUpdate: () => renderAt(st.t) }, 0);
+    window.addEventListener('hf-seek', () => renderAt(st.t));
+    renderAt(0);
+    window.__timelines['fx-kamera-yol'] = tl;
+    if (window.__hfForceTimelineRebind) window.__hfForceTimelineRebind();
+  });
+  window.__hf = window.__hf || {}; window.__hf.buildReady = window.__hf.buildReady || {};
+  window.__kyn = (window.__kyn || 0) + 1;
+  window.__hf.buildReady['fx-kamera-yol-' + window.__kyn] = build;
+})();
+</script>
+</template>
+</body></html>

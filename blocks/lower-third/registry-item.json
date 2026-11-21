@@ -1,0 +1,25 @@
+{
+  "$schema": "https://hyperframes.heygen.com/schema/registry-item.json",
+  "name": "lower-third",
+  "type": "hyperframes:block",
+  "title": "Lower Third",
+  "description": "Ism, lavozim yoki qisqa izoh uchun pastki ekran yozuvi.",
+  "tags": [
+    "lower-third",
+    "text",
+    "overlay"
+  ],
+  "author": "hf-registr",
+  "dimensions": {
+    "width": 1920,
+    "height": 1080
+  },
+  "duration": 5.0,
+  "files": [
+    {
+      "path": "lower-third/lower-third.html",
+      "target": "compositions/lower-third/lower-third.html",
+      "type": "hyperframes:composition"
+    }
+  ]
+}

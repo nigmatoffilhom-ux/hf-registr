@@ -1,0 +1,25 @@
+{
+  "$schema": "https://hyperframes.heygen.com/schema/registry-item.json",
+  "name": "subtitr-3d",
+  "type": "hyperframes:block",
+  "title": "Subtitr 3D",
+  "description": "Subtitrlarni 3D ko'rinishda animatsiya bilan chiqaruvchi blok.",
+  "tags": [
+    "captions",
+    "text",
+    "3d"
+  ],
+  "author": "hf-registr",
+  "dimensions": {
+    "width": 1920,
+    "height": 1080
+  },
+  "duration": 6.0,
+  "files": [
+    {
+      "path": "subtitr-3d/subtitr-3d.html",
+      "target": "compositions/subtitr-3d/subtitr-3d.html",
+      "type": "hyperframes:composition"
+    }
+  ]
+}

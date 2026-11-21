@@ -1,0 +1,25 @@
+{
+  "$schema": "https://hyperframes.heygen.com/schema/registry-item.json",
+  "name": "ui-mockup",
+  "type": "hyperframes:block",
+  "title": "UI Mockup",
+  "description": "telefon ilova mockup: /komanda typewriter + klaviatura pop + spinner -> checkmark chek-ro'yxat",
+  "tags": [
+    "ui",
+    "phone",
+    "interface"
+  ],
+  "author": "hf-registr",
+  "dimensions": {
+    "width": 1920,
+    "height": 1080
+  },
+  "duration": 10.0,
+  "files": [
+    {
+      "path": "ui-mockup/ui-mockup.html",
+      "target": "compositions/ui-mockup/ui-mockup.html",
+      "type": "hyperframes:composition"
+    }
+  ]
+}

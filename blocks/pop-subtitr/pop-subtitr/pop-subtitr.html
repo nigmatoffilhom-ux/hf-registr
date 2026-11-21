@@ -1,0 +1,71 @@
+<!doctype html>
+<!--
+  fx-pop-subtitr — so'zma-so'z POP-ON subtitr (iakadirov usuli, XULOSA-3): har guruhda 1–2 so'z, markazga yaqin, qora yarim shaffof lenta;
+  so'zlar aytilgan paytda birin-ketin "pop" (kichikdan back.out bilan) chiqadi, eng yangi so'z urg'u rangida, keyin oq. Guruh tugagach tez so'nadi.
+  subtitr-kinetik'dan farqi: u karaoke (guruh oldindan xira ko'rinadi, marker sirpanadi); bu yerda so'z faqat aytilganda paydo bo'ladi.
+  Ma'lumot SUB massivida — asboblar/srt2subtitr.py --uslub pop (standart 2 so'z / 24 belgi) yoki ulash.py pop-subtitr --srt ... bilan to'ldiriladi.
+  <div data-composition-id="fx-pop-subtitr" data-composition-src="pop-subtitr/pop-subtitr.html"
+       data-start="0" data-duration="8" data-track-index="9" data-width="1080" data-height="1920"></div>
+-->
+<html data-composition-variables='[
+  {"id":"urgu","type":"color","label":"Yangi so`z rangi","default":"#ffd166"},
+  {"id":"joy","type":"enum","label":"Joy","default":"markaz","options":[{"value":"markaz","label":"Markaz (pastroq)"},{"value":"past","label":"Pastda"}]},
+  {"id":"pastdan","type":"number","label":"Pastdan masofa (px; faqat joy=past)","default":220,"min":0,"step":10},
+  {"id":"olcham","type":"number","label":"Shrift o`lchami (px, maksimal)","default":96,"min":30,"step":2},
+  {"id":"lenta","type":"boolean","label":"Qora yarim shaffof lenta","default":true}
+]'>
+<head><meta charset="UTF-8" /></head>
+<body>
+<template>
+<style>
+  #root{position:absolute;inset:0;pointer-events:none;font-family:Inter,Arial,sans-serif}
+  .pp-g{position:absolute;left:0;right:0;display:flex;justify-content:center;opacity:0;visibility:hidden}
+  .pp-line{display:flex;flex-wrap:nowrap;justify-content:center;gap:0 .28em;padding:.16em .5em .2em;border-radius:.2em;max-width:90%}
+  .pp-line.lenta{background:rgba(0,0,0,.6)}
+  .pp-w{display:inline-block;font-weight:900;line-height:1.2;color:#fff;white-space:nowrap;transform-origin:50% 70%;opacity:0;text-transform:uppercase;letter-spacing:.01em}
+</style>
+<div id="root" data-composition-id="fx-pop-subtitr"></div>
+<script>
+(function(){
+  const SUB = /*SUB*/[{"s":0.3,"e":1.6,"w":[["Haydovchi",0.3,0.9],["eng",0.9,1.2],["avval",1.2,1.6]]}]/*SUB_END*/;
+  const V = window.__hyperframes.getVariables() || {};
+  const root = document.querySelector('#root');
+  const _o = root.closest('[data-width]');
+  const FW = Number(_o && _o.getAttribute('data-width')) || root.offsetWidth || 1920, FH = Number(_o && _o.getAttribute('data-height')) || root.offsetHeight || 1080;
+  const FMT = FW / FH < 0.8 ? 'tik' : (FW / FH < 1.25 ? 'kv' : 'keng'); root.classList.add('fx-' + FMT);
+  const MAX = (Number(V.olcham) || 96) * (FMT === 'keng' ? 0.8 : 1);
+  const UR = V.urgu || '#ffd166', lenta = V.lenta !== false && V.lenta !== 'false';
+  const tik = FMT === 'tik' ? FH * 0.62 : FMT === 'kv' ? FH * 0.66 : FH * 0.76; // markaz: pastroq (matn kadrning ~62–76 % balandligida)
+  const PD = isNaN(Number(V.pastdan)) ? 220 : Number(V.pastdan);
+  const tl = gsap.timeline({ paused: true });
+  const groups = SUB.map(g => {
+    const ge = document.createElement('div'); ge.className = 'pp-g';
+    const line = document.createElement('div'); line.className = 'pp-line' + (lenta ? ' lenta' : '');
+    if (V.joy === 'past') ge.style.bottom = Math.max(PD, FMT === 'tik' ? FH * 0.12 : 0) + 'px'; else ge.style.top = (tik - MAX * 0.7) + 'px';
+    const ws = g.w.map(w => { const s = document.createElement('span'); s.className = 'pp-w'; s.textContent = w[0]; line.appendChild(s); return { el: s, s: w[1], e: w[2] }; });
+    ge.appendChild(line); root.appendChild(ge);
+    return { g, ge, ws, line };
+  });
+  const build = () => {
+    groups.forEach(({ g, ge, ws, line }) => {
+      // kenglikka sig'dirish: shrift yuklangach, barcha so'z ko'rinib turganda o'lchanadi; keyin so'zlar yashiriladi va aytilganda qo'shiladi (lenta so'z bilan o'sadi)
+      let fs = MAX, k = 0; line.style.fontSize = fs + 'px';
+      while (line.scrollWidth > FW * 0.8 && fs > 36 && k++ < 60) { fs *= 0.96; line.style.fontSize = fs + 'px'; }
+      ws.forEach(w => { w.el.style.display = 'none'; });
+      tl.set(ge, { visibility: 'visible', opacity: 1 }, g.s);
+      ws.forEach((w, i) => {
+        tl.set(w.el, { display: 'inline-block' }, w.s);
+        const keyin = i + 1 < ws.length ? ws[i + 1].s : g.e;
+        tl.fromTo(w.el, { opacity: 0, scale: 0.55, y: 14, color: UR }, { opacity: 1, scale: 1, y: 0, duration: 0.17, ease: 'back.out(2.6)' }, w.s);
+        tl.to(w.el, { color: '#ffffff', duration: 0.12, ease: 'none' }, Math.max(w.s + 0.17, keyin));
+      });
+      tl.to(ge, { opacity: 0, duration: 0.1, ease: 'power1.in' }, Math.max(g.s + 0.2, g.e - 0.1));
+      tl.set(ge, { opacity: 0, visibility: 'hidden' }, g.e);
+    });
+    window.__timelines['fx-pop-subtitr'] = tl;
+  };
+  (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(build);
+})();
+</script>
+</template>
+</body></html>

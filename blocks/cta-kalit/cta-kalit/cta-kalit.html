@@ -1,0 +1,92 @@
+<!doctype html>
+<!--
+  fx-cta-kalit — "Comment X" CTA bloki (reel oxirgi 3–4 s da qotib turadi): ustki chaqiriq ("Izohga yozing"), amber ramkadagi KATTA kalit so'z
+  (pulsatsiya — chekli takror), pastga o'q (chizilib chiqadi, keyin yengil sakraydi), ostida izoh ("va men sizga ... yuboraman").
+  Mustaqil blok (boshqa kutubxona kerak emas). Odatda oxirgi 3–4 s: data-start = video_oxiri − 3.5.
+  <div data-composition-id="fx-cta-kalit" data-composition-src="cta-kalit/cta-kalit.html"
+       data-variable-values='{"soz":"NORMA","ustki":"Izohga yozing","izoh":"va ShNQ jadvalini yuboraman"}'
+       data-start="26" data-duration="3.6" data-track-index="9" data-width="1080" data-height="1920"></div>
+-->
+<html data-composition-variables='[
+  {"id":"soz","type":"string","label":"Kalit so`z","default":"NORMA"},
+  {"id":"ustki","type":"string","label":"Ustki matn","default":"Izohga yozing"},
+  {"id":"izoh","type":"string","label":"Pastki izoh","default":"va men sizga yuboraman"},
+  {"id":"urgu","type":"color","label":"Urg`u rangi","default":"#f0a24b"},
+  {"id":"yon","type":"enum","label":"O`q yo`nalishi","default":"past","options":[{"value":"past","label":"Pastga"},{"value":"ong","label":"O`ngga"},{"value":"yoq","label":"O`q yo`q"}]},
+  {"id":"joy","type":"enum","label":"Joy","default":"markaz","options":[{"value":"markaz","label":"Markaz"},{"value":"past","label":"Pastroq"}]},
+  {"id":"takror","type":"number","label":"Pulsatsiya soni","default":3,"min":0,"max":8,"step":1},
+  {"id":"fon","type":"boolean","label":"O`z foni (qoraytirilgan)","default":false}
+]'>
+<head><meta charset="UTF-8" /></head>
+<body>
+<template>
+<style>
+  #root{position:absolute;inset:0;pointer-events:none;overflow:hidden;font-family:Inter,'Noto Sans',sans-serif;color:#f2efe6}
+  .ck-bg{position:absolute;inset:0;background:rgba(5,7,13,.72)}
+  .ck-w{position:absolute;left:0;right:0;display:flex;flex-direction:column;align-items:center;gap:.7em}
+  .ck-w.markaz{top:50%;transform:translateY(-50%)}.ck-w.past{bottom:12%}
+  .ck-us{font-size:2.3em;font-weight:600;letter-spacing:.04em;color:rgba(242,239,230,.88);text-align:center}
+  .ck-box{position:relative;padding:.22em .6em .26em;border:3px solid var(--urgu,#f0a24b);border-radius:.14em;background:rgba(5,7,13,.55);
+    box-shadow:0 0 1.2em rgba(240,162,75,.25)}
+  .ck-box>i{position:absolute;width:.5em;height:.5em;border:0 solid #fff}
+  .ck-box>i.a{left:-.12em;top:-.12em;border-left-width:3px;border-top-width:3px}.ck-box>i.b{right:-.12em;top:-.12em;border-right-width:3px;border-top-width:3px}
+  .ck-box>i.c{left:-.12em;bottom:-.12em;border-left-width:3px;border-bottom-width:3px}.ck-box>i.d{right:-.12em;bottom:-.12em;border-right-width:3px;border-bottom-width:3px}
+  .ck-soz{display:flex;font-weight:900;letter-spacing:.04em;color:var(--urgu,#f0a24b);line-height:1.05;white-space:nowrap}
+  .ck-soz span{display:inline-block}
+  .ck-iz{font-family:'Playfair Display',serif;font-style:italic;font-size:2.2em;color:rgba(242,239,230,.78);text-align:center;max-width:86%}
+  .ck-oq{width:5em;height:5em;overflow:visible}
+  .ck-oq path{fill:none;stroke:var(--urgu,#f0a24b);stroke-width:5;stroke-linecap:round;stroke-linejoin:round}
+</style>
+<div id="root" data-composition-id="fx-cta-kalit">
+  <div class="ck-bg"></div>
+  <div class="ck-w">
+    <div class="ck-us"></div>
+    <div class="ck-box"><i class="a"></i><i class="b"></i><i class="c"></i><i class="d"></i><div class="ck-soz"></div></div>
+    <svg class="ck-oq" viewBox="0 0 64 64"><path class="ck-p1" d="M32 6 L32 52"/><path class="ck-p2" d="M14 36 L32 54 L50 36"/></svg>
+    <div class="ck-iz"></div>
+  </div>
+</div>
+<script>
+(function(){
+  const V = (window.__hyperframes && window.__hyperframes.getVariables && window.__hyperframes.getVariables()) || {};
+  const root = document.querySelector('#root'), _o = root.closest('[data-width]');
+  const q = s => root.querySelector(s);
+  const FW = Number(_o && _o.getAttribute('data-width')) || root.offsetWidth || 1920, FH = Number(_o && _o.getAttribute('data-height')) || root.offsetHeight || 1080;
+  const FMT = FW / FH < 0.8 ? 'tik' : (FW / FH < 1.25 ? 'kv' : 'keng'); root.classList.add('fx-' + FMT);
+  const D = Number(_o && _o.getAttribute('data-duration')) || 3.6;
+  root.style.fontSize = (FMT === 'keng' ? FW / 1920 * 18 : FW / 1080 * 16) + 'px';
+  root.style.setProperty('--urgu', V.urgu || '#f0a24b');
+  if (!(V.fon === true || V.fon === 'true')) q('.ck-bg').style.display = 'none';
+  const W = q('.ck-w'); W.classList.add(V.joy === 'past' ? 'past' : 'markaz');
+  q('.ck-us').textContent = V.ustki == null ? 'Izohga yozing' : String(V.ustki);
+  q('.ck-iz').textContent = V.izoh == null ? '' : String(V.izoh);
+  const soz = String(V.soz == null ? 'NORMA' : V.soz), sz = q('.ck-soz');
+  const harf = Array.from(soz).map(c => { const s = document.createElement('span'); s.textContent = c === ' ' ? ' ' : c; sz.appendChild(s); return s; });
+  sz.style.fontSize = (FMT === 'tik' ? 9.5 : FMT === 'kv' ? 8.5 : 9) + 'em';
+  const oq = q('.ck-oq'), yon = V.yon || 'past';
+  if (yon === 'yoq') oq.style.display = 'none';
+  else if (yon === 'ong') oq.style.transform = 'rotate(-90deg)';
+  const build = () => {
+    // kalit so'z kenglikka sig'ishi (deterministik)
+    const box = q('.ck-box'); let f = parseFloat(sz.style.fontSize), g = 0;
+    while (box.offsetWidth > FW * 0.88 && f > 2 && g++ < 60) { f *= 0.95; sz.style.fontSize = f + 'em'; }
+    const tl = gsap.timeline({ paused: true });
+    const ur = q('.ck-us'), iz = q('.ck-iz'), p1 = q('.ck-p1'), p2 = q('.ck-p2');
+    [p1, p2].forEach(p => { const L = p.getTotalLength(); p.style.strokeDasharray = L; });
+    tl.fromTo(ur, { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.45, ease: 'power3.out' }, 0.05);
+    tl.fromTo(box, { opacity: 0, scale: 0.86 }, { opacity: 1, scale: 1, duration: 0.5, ease: 'back.out(1.8)' }, 0.25);
+    tl.fromTo(harf, { opacity: 0, y: 30, scale: 0.7 }, { opacity: 1, y: 0, scale: 1, duration: 0.4, ease: 'back.out(2.2)', stagger: 0.05 }, 0.35);
+    tl.fromTo(p1, { strokeDashoffset: p1.getTotalLength() }, { strokeDashoffset: 0, duration: 0.4, ease: 'power2.out', immediateRender: true }, 0.9);
+    tl.fromTo(p2, { strokeDashoffset: p2.getTotalLength() }, { strokeDashoffset: 0, duration: 0.3, ease: 'power2.out', immediateRender: true }, 1.15);
+    tl.fromTo(iz, { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, 1.1);
+    // pulsatsiya va o'q sakrashi — chekli takror (repeat:-1 yo'q)
+    const n = Math.max(0, Math.min(8, Number(V.takror == null ? 3 : V.takror)));
+    if (n) tl.to(box, { scale: 1.045, duration: 0.45, ease: 'sine.inOut', yoyo: true, repeat: n * 2 - 1, immediateRender: false }, 1.2);
+    if (yon !== 'yoq') tl.to(oq, { y: yon === 'ong' ? 0 : 12, x: yon === 'ong' ? 12 : 0, duration: 0.4, ease: 'sine.inOut', yoyo: true, repeat: Math.max(1, n) * 2 - 1, immediateRender: false }, 1.5);
+    window.__timelines['fx-cta-kalit'] = tl;
+  };
+  (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(build);
+})();
+</script>
+</template>
+</body></html>

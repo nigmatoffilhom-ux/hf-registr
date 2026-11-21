@@ -1,0 +1,40 @@
+{
+  "$schema": "https://hyperframes.heygen.com/schema/registry-item.json",
+  "name": "maska-blok",
+  "type": "hyperframes:block",
+  "title": "Maska Blok",
+  "description": "GSAP maska va shakl animatsiyalari uchun namuna blok.",
+  "tags": [
+    "mask",
+    "transition",
+    "gsap"
+  ],
+  "author": "hf-registr",
+  "dimensions": {
+    "width": 1920,
+    "height": 1080
+  },
+  "duration": 4.0,
+  "files": [
+    {
+      "path": "maska/blok/maska-blok.html",
+      "target": "compositions/maska/blok/maska-blok.html",
+      "type": "hyperframes:composition"
+    },
+    {
+      "path": "maska/maska.js",
+      "target": "compositions/maska/maska.js",
+      "type": "hyperframes:asset"
+    },
+    {
+      "path": "maska/vendor/MorphSVGPlugin.min.js",
+      "target": "compositions/maska/vendor/MorphSVGPlugin.min.js",
+      "type": "hyperframes:asset"
+    },
+    {
+      "path": "maska/vendor/MotionPathPlugin.min.js",
+      "target": "compositions/maska/vendor/MotionPathPlugin.min.js",
+      "type": "hyperframes:asset"
+    }
+  ]
+}

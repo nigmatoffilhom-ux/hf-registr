@@ -1,0 +1,25 @@
+{
+  "$schema": "https://hyperframes.heygen.com/schema/registry-item.json",
+  "name": "ai-belgi",
+  "type": "hyperframes:block",
+  "title": "AI Belgi",
+  "description": "AI mavzusidagi belgili vizual blok.",
+  "tags": [
+    "ai",
+    "icon",
+    "title"
+  ],
+  "author": "hf-registr",
+  "dimensions": {
+    "width": 1920,
+    "height": 1080
+  },
+  "duration": 10.0,
+  "files": [
+    {
+      "path": "ai-belgi/ai-belgi.html",
+      "target": "compositions/ai-belgi/ai-belgi.html",
+      "type": "hyperframes:composition"
+    }
+  ]
+}
