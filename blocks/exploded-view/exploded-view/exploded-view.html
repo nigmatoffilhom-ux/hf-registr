@@ -3,7 +3,7 @@
   fx-exploded-view — qatlamli obyektning "portlash" (teardown) ko'rinishi: qatlamlar yuqoridan pastga ketma-ket ajraladi, har birining yonida
   yorliq chizig'i + raqam ("01") + nom + izoh. Izometrik (ortografik) kamera, qattiq (shaded) three.js r160 materiallari, RoomEnvironment aksi.
   tur = klaviatura (reeldagi 6 qatlam: tugma qopqoqlari, kalitlar, plata, elektron plata, tayanchlar, korpus) | yol (yo'l qatlamlari: shisha sharchalar,
-  termoplastik chiziq, asfaltbeton, shag'al asos, grunt — yo'l qurilishi mavzusi). `yorliqlar` = JSON [["Nom","izoh"],...] (yuqoridan pastga) — matnni almashtiradi.
+  termoplastik chiziq, asfaltbeton, shag'al asos, grunt — institut mavzusi). `yorliqlar` = JSON [["Nom","izoh"],...] (yuqoridan pastga) — matnni almashtiradi.
   Deterministik: har kadr faqat vaqtdan (proxy tween), seeded PRNG; yorliq joylari modelning oxirgi (ajralgan) holatidan olinadi, chiziq esa joriy nuqtadan chiqadi.
   Host (ulash.py: python3 -I ulash.py exploded-view --loyiha X --var tur=yol):
   <div data-composition-id="fx-exploded-view" data-composition-src="exploded-view/exploded-view.html" data-variable-values='{"tur":"klaviatura"}'
@@ -13,6 +13,7 @@
   {"id":"tur","type":"enum","label":"Obyekt","default":"klaviatura","options":[{"value":"klaviatura","label":"Klaviatura (6 qatlam)"},{"value":"yol","label":"Yo‘l qatlamlari (5 qatlam)"}]},
   {"id":"yorliqlar","type":"string","label":"Yorliqlar JSON: [[nom,izoh],...] yuqoridan pastga (bo‘sh = standart)","default":""},
   {"id":"sarlavha","type":"string","label":"Yuqori yorliq","default":"EXPLODED VIEW"},
+  {"id":"izoh_pastki","type":"string","label":"Pastki burchak izohi (kichik, xira); bo‘sh = yo‘q","default":""},
   {"id":"urgu","type":"color","label":"Urg‘u rangi","default":"#ff7a3c"},
   {"id":"yorliq","type":"boolean","label":"Yorliqlar va chiziqlar","default":true},
   {"id":"fon","type":"boolean","label":"Qora fon","default":true},
@@ -31,6 +32,7 @@
   .ev-svg polyline{fill:none;stroke:#f2efe6;stroke-width:1.6;opacity:.85}
   .ev-svg circle{fill:var(--ev-u,#ff7a3c)}
   .ev-top{position:absolute;left:5%;top:5%;font-family:'JetBrains Mono',monospace;color:rgba(242,239,230,.7);letter-spacing:.14em;font-size:20px}
+  .ev-izoh{position:absolute;right:5%;bottom:4%;font-family:'JetBrains Mono',monospace;color:rgba(242,239,230,.42);letter-spacing:.08em;font-size:20px;text-align:right}
   .ev-top b{color:var(--ev-u,#ff7a3c);font-weight:700}
   .ev-l{position:absolute;opacity:0;color:#f2efe6;font-family:'Inter',sans-serif;transform-origin:left center}
   .ev-l .n{font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--ev-u,#ff7a3c);font-size:.78em;letter-spacing:.06em}
@@ -41,6 +43,7 @@
   <canvas class="ev-cv"></canvas>
   <svg class="ev-svg"></svg>
   <div class="ev-top"></div>
+  <div class="ev-izoh"></div>
 </div>
 <script class="ev-vendor" src="../3d-mini/vendor/m3-three.js"></script>
 <script class="ev-ortak" src="../3d-ortak/fx3d.js"></script>
@@ -163,6 +166,7 @@
     // DOM: yorliqlar + SVG chiziqlar
     const svg = q('.ev-svg'); svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H); const NS = 'http://www.w3.org/2000/svg';
     const top = q('.ev-top'); top.innerHTML = String(V.sarlavha === undefined ? 'EXPLODED VIEW' : V.sarlavha) + ' <b>· ' + String(n).padStart(2, '0') + '</b>'; top.style.fontSize = Math.round(20 * U) + 'px';
+    const izoh = q('.ev-izoh'); izoh.textContent = String(V.izoh_pastki || ''); izoh.style.fontSize = Math.round(Math.min(W, H) * 0.02) + 'px'; izoh.style.display = V.izoh_pastki ? '' : 'none';
     const lx = (TIK ? 0.64 : 0.64) * W, lw = (TIK ? 0.33 : 0.31) * W, fs = Math.round((TIK ? 32 : 34) * U);
     const els = layers.map((L, i) => {
       const lb = LBL[i] || ['', '']; const d = document.createElement('div'); d.className = 'ev-l'; d.style.cssText = 'left:' + lx + 'px;width:' + lw + 'px;font-size:' + fs + 'px';
