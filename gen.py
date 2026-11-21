@@ -20,6 +20,8 @@ ULASH_PATH = SOURCE / "ulash.py"
 SCHEMA_REGISTRY = "https://hyperframes.heygen.com/schema/registry.json"
 SCHEMA_ITEM = "https://hyperframes.heygen.com/schema/registry-item.json"
 AUTHOR = "hf-registr"
+REGISTRY_NAME = "hf-registr"
+HOMEPAGE = "https://github.com/nigmatoffilhom-ux/hf-registr"
 
 DESCRIPTIONS = {
     "subtitr-3d": "Subtitrlarni 3D ko'rinishda animatsiya bilan chiqaruvchi blok.",
@@ -78,6 +80,63 @@ TITLES = {
 
 EXCLUDED_FILES = {".DS_Store", "README.md", "package.json"}
 EXCLUDED_DIRS = {".hyperframes", "__pycache__", "sinov", "namuna"}
+
+# Manba izohlari ulash.py joylashuviga mos; GitHub registrga chiqarishda
+# `hyperframes add` joylashuvi (compositions/...) uchun o'giriladi.
+# Kalit: manbadagi nisbiy yo'l; qiymat: (eski, yangi) juftliklari.
+REGISTR_PATCHES: dict[str, list[tuple[str, str]]] = {
+    "roto/blok/roto-blok.html": [
+        ('<video id="rt-video" class="rt-video" src="roto/blok/namuna-roto.webm" muted', '<video id="rt-video" class="rt-video" src="compositions/roto/blok/namuna-roto.webm" muted'),
+        ("'roto/blok/namuna-roto.webm'", "'compositions/roto/blok/namuna-roto.webm'"),
+        ('"default":"roto/blok/namuna-roto.webm"', '"default":"compositions/roto/blok/namuna-roto.webm"'),
+    ],
+    "3d-mini/3d-mini.html": [
+        ("re:Host'ga ulash \\(papka nusxasi: [^\\n]*?3d-mini hf/\\):",
+         "Host'ga ulash (o'rnatish: hyperframes add 3d-mini):"),
+        ('<video class="m3-video" src="namuna-ekran.mp4"', '<video id="m3-video" class="m3-video" src="namuna-ekran.mp4"'),
+    ],
+    "lower-third/lower-third.html": [
+        ('re:"ism":"[^"]*","lavozim":"[^"]*"', '"ism":"Ism Familiya","lavozim":"Lavozim"'),
+    ],
+    "sarlavha-kinetik/sarlavha-kinetik.html": [
+        ("re:Host'ga ulash \\(yoki: python3 [^\\n]*?ulash\\.py sarlavha-kinetik[^\\n]*?\\)",
+         "Host'ga ulash (yoki: hyperframes add sarlavha-kinetik)"),
+    ],
+    "shader/qatlam.html": [
+        ('data-composition-src="shader/qatlam.html"', 'data-composition-src="compositions/shader/qatlam.html"'),
+        ("Batafsil: shader/README.md", "Batafsil: _effektlar/shader/README.md (registrga kirmagan)"),
+    ],
+    "uslublar/sahna.html": [
+        ("Host <head> da (tartib muhim):",
+         "Host <head> da (tartib muhim; `hyperframes add` fayllarni compositions/ ichiga qo'yadi, yo'llar host index.html ga nisbatan):"),
+        ('src="animatsiya/anim.js"', 'src="compositions/animatsiya/anim.js"'),
+        ('src="uslublar/uslublar.js"', 'src="compositions/uslublar/uslublar.js"'),
+        ('href="uslublar/uslublar.css"', 'href="compositions/uslublar/uslublar.css"'),
+        ('data-composition-src="uslublar/sahna.html"', 'data-composition-src="compositions/uslublar/sahna.html"'),
+    ],
+    "uslublar/uslublar.js": [
+        ('Ulash (host <head>):  <script src="uslublar/uslublar.js"></script>',
+         'Ulash (host <head>, hyperframes add dan keyin):  <script src="compositions/uslublar/uslublar.js"></script>'),
+    ],
+}
+
+
+def registr_patch(rel: Path, destination: Path) -> None:
+    """Nusxalangan faylga registrga xos o'zgartirishlarni qo'llaydi."""
+    for suffix, pairs in REGISTR_PATCHES.items():
+        if not rel.as_posix().endswith(suffix):
+            continue
+        text = destination.read_text(encoding="utf-8")
+        for old, new in pairs:
+            if old.startswith("re:"):
+                text, count = re.subn(old[3:], lambda _m, n=new: n, text, count=1)
+                if not count:
+                    raise SystemExit(f"registr o'zgartirishi uchun matn topilmadi: {rel}: {old[:50]}")
+                continue
+            if old not in text:
+                raise SystemExit(f"registr o'zgartirishi uchun matn topilmadi: {rel}: {old[:50]}")
+            text = text.replace(old, new)
+        destination.write_text(text, encoding="utf-8")
 
 
 def load_ulash() -> Any:
@@ -209,6 +268,7 @@ def generate(homepage: str) -> tuple[list[str], list[str]]:
             destination = item_dir / rel
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source_root / rel, destination)
+            registr_patch(rel, destination)
             manifest_files.append(
                 {
                     "path": rel.as_posix(),
@@ -242,7 +302,7 @@ def generate(homepage: str) -> tuple[list[str], list[str]]:
 
     registry = {
         "$schema": SCHEMA_REGISTRY,
-        "name": "hf-registr",
+        "name": REGISTRY_NAME,
         "homepage": homepage,
         "items": registry_items,
     }
@@ -256,7 +316,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--homepage",
-        default="https://github.com/nigmatoffilhom-ux/hf-registr",
+        default=HOMEPAGE,
         help="registry.json dagi homepage; standart: GitHub repo",
     )
     args = parser.parse_args()
