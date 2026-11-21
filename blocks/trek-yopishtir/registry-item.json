@@ -1,0 +1,24 @@
+{
+  "$schema": "https://hyperframes.heygen.com/schema/registry-item.json",
+  "name": "trek-yopishtir",
+  "type": "hyperframes:block",
+  "title": "Trek Yopishtir",
+  "description": "track.py JSON nuqtasiga matn/belgi yopishtirish; hostda <video id=ekran1> kerak; --var video=#ekran1 trek=assets/trek.json matn belgi offsetX offsetY rang olcham",
+  "tags": [
+    "visual",
+    "effect"
+  ],
+  "author": "hf-registr",
+  "dimensions": {
+    "width": 1280,
+    "height": 720
+  },
+  "duration": 5.0,
+  "files": [
+    {
+      "path": "kuzatuv/blok/trek-yopishtir.html",
+      "target": "compositions/kuzatuv/blok/trek-yopishtir.html",
+      "type": "hyperframes:composition"
+    }
+  ]
+}

@@ -59,8 +59,11 @@
         tl.fromTo(w.el, { opacity: 0, scale: 0.55, y: 14, color: UR }, { opacity: 1, scale: 1, y: 0, duration: 0.17, ease: 'back.out(2.6)' }, w.s);
         tl.to(w.el, { color: '#ffffff', duration: 0.12, ease: 'none' }, Math.max(w.s + 0.17, keyin));
       });
-      tl.to(ge, { opacity: 0, duration: 0.1, ease: 'power1.in' }, Math.max(g.s + 0.2, g.e - 0.1));
-      tl.set(ge, { opacity: 0, visibility: 'hidden' }, g.e);
+      // keyingi guruh boshlanishidan oldin to'liq yo'qolsin (ikki guruh bir joyda ustma-ust chiqmasin — 2026-11-21 hisobot videosida topildi)
+      const gi = groups.findIndex(x => x.g === g), nx = groups[gi + 1];
+      const ge_ = nx ? Math.min(g.e, nx.g.s) : g.e;
+      tl.to(ge, { opacity: 0, duration: 0.1, ease: 'power1.in' }, Math.max(g.s + 0.05, ge_ - 0.1));
+      tl.set(ge, { opacity: 0, visibility: 'hidden' }, ge_);
     });
     window.__timelines['fx-pop-subtitr'] = tl;
   };

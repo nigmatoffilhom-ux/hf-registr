@@ -1,0 +1,83 @@
+<!doctype html>
+<!--
+  fx-trek-yopishtir — track.py JSON nuqtasiga matn/belgi yopishtirish.
+  Host timeline'da GSAP bo'lsin; bu sub-composition o'zining bitta paused timeline'ini ro'yxatdan o'tkazadi.
+  <video id="ekran1" src="assets/video.mp4" muted playsinline data-start="0" data-duration="5"
+         data-width="1280" data-height="720" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain"></video>
+  <div id="u-trek" data-composition-id="fx-trek-yopishtir" data-composition-src="blok/trek-yopishtir.html"
+       data-variable-values='{"video":"#ekran1","trek":"assets/trek.json","matn":"Nuqta","belgi":"●","kechikish":0,"offsetX":0,"offsetY":-36}'
+       data-start="0" data-duration="5" data-track-index="8" data-width="1280" data-height="720"></div>
+-->
+<html data-composition-variables='[
+  {"id":"video","type":"string","label":"Host video CSS selector","default":"#ekran1"},
+  {"id":"trek","type":"string","label":"Trek JSON yo‘li","default":"assets/trek.json"},
+  {"id":"matn","type":"string","label":"Yorliq matni","default":""},
+  {"id":"belgi","type":"string","label":"Belgi (Unicode/SVG o‘rniga matn)","default":"●"},
+  {"id":"kechikish","type":"number","label":"Kechikish (s)","default":0},
+  {"id":"offsetX","type":"number","label":"X siljish (video px)","default":0},
+  {"id":"offsetY","type":"number","label":"Y siljish (video px)","default":-36},
+  {"id":"rang","type":"string","label":"Rang","default":"#ffd166"},
+  {"id":"olcham","type":"number","label":"Belgi o‘lchami (video px)","default":34}
+]'>
+<head><meta charset="UTF-8" /></head>
+<body>
+<template>
+<style>
+  #root{position:absolute;inset:0;overflow:hidden;pointer-events:none;color:#ffd166;font-family:Inter,Arial,sans-serif}
+  .tj-marker{position:absolute;left:0;top:0;display:flex;align-items:center;gap:8px;transform-origin:center center;white-space:nowrap;filter:drop-shadow(0 2px 5px #000)}
+  .tj-icon{display:grid;place-items:center;border:2px solid currentColor;border-radius:50%;width:34px;height:34px;background:rgba(5,9,16,.72);font-size:20px;line-height:1}
+  .tj-label{padding:5px 9px;border:1px solid currentColor;border-radius:5px;background:rgba(5,9,16,.82);font-size:22px;font-weight:700;line-height:1.15}
+</style>
+<div id="root" data-composition-id="fx-trek-yopishtir">
+  <div class="tj-marker"><span class="tj-icon"></span><span class="tj-label"></span></div>
+  <a class="tj-track-file" href="trek.json" hidden></a>
+</div>
+<script>
+(async function(){
+  window.FX=window.FX||{};
+  const V=window.__hyperframes.getVariables()||{};
+  const root=document.querySelector('#root'), marker=root.querySelector('.tj-marker');
+  const icon=root.querySelector('.tj-icon'), label=root.querySelector('.tj-label');
+  const videoSelector=String(V.video||'#ekran1');
+  const slotHost=root.closest('[data-composition-src]');
+  const videoScope=slotHost&&slotHost.parentElement;
+  const hostVideo=videoScope&&videoScope.querySelector(videoSelector);
+  const slot=root.closest('[data-width]');
+  const FW=Number(slot&&slot.getAttribute('data-width'))||root.offsetWidth||1920;
+  const FH=Number(slot&&slot.getAttribute('data-height'))||root.offsetHeight||1080;
+  const fallback=root.querySelector('.tj-track-file').href;
+  const url=V.trek?new URL(String(V.trek),document.baseURI).href:fallback;
+  const response=await fetch(url);
+  if(!response.ok) throw new Error('Trek JSON yuklanmadi: '+url+' ('+response.status+')');
+  const data=await response.json(), frames=data.kadrlar||data.frames;
+  if(!Array.isArray(frames)||frames.length<2) throw new Error('Trek JSON ichida kamida ikki kadr bo‘lishi kerak');
+  const vw=Number(data.width)||(hostVideo&&hostVideo.videoWidth)||FW;
+  const vh=Number(data.height)||(hostVideo&&hostVideo.videoHeight)||FH;
+  const scaleFactor=Math.min(FW/vw,FH/vh);
+  const padX=(FW-vw*scaleFactor)/2, padY=(FH-vh*scaleFactor)/2;
+  const delay=Number(V.kechikish)||0, ox=(Number(V.offsetX)||0)*scaleFactor, oy=(Number(V.offsetY)||0)*scaleFactor;
+  const fontScale=Number(V.olcham)>0?Number(V.olcham)*scaleFactor:34*scaleFactor;
+  marker.style.color=String(V.rang||'#ffd166');
+  icon.textContent=String(V.belgi||'●'); icon.style.width=fontScale+'px'; icon.style.height=fontScale+'px';
+  icon.style.fontSize=(fontScale*.62)+'px';
+  label.textContent=String(V.matn||''); if(!V.matn) label.style.display='none';
+  const t0=Number(frames[0].t)||0;
+  const xy=(p,key,nkey,size,videoSize,pad)=>Number(p[nkey]!==undefined?p[nkey]*videoSize*scaleFactor+pad:p[key]*scaleFactor+pad);
+  const tl=gsap.timeline({paused:true});
+  const first=frames[0];
+  marker.dataset.video=videoSelector;
+  gsap.set(marker,{xPercent:-50,yPercent:-50,x:xy(first,'x','x_n',FW,vw,padX)+ox,y:xy(first,'y','y_n',FH,vh,padY)+oy,
+                   scale:Number(first.scale)||1,rotation:Number(first.rot)||0});
+  for(let i=1;i<frames.length;i++){
+    const p=frames[i], prev=frames[i-1];
+    const at=Math.max(0,Number(prev.t)-t0+delay), end=Math.max(at,Number(p.t)-t0+delay);
+    const dur=end-at;
+    tl.to(marker,{x:xy(p,'x','x_n',FW,vw,padX)+ox,y:xy(p,'y','y_n',FH,vh,padY)+oy,
+                   scale:Number(p.scale)||1,rotation:Number(p.rot)||0,
+                   duration:dur,ease:'none',immediateRender:false},at);
+  }
+  window.__timelines['fx-trek-yopishtir']=tl;
+})();
+</script>
+</template>
+</body></html>
