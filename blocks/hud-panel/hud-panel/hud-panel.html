@@ -43,7 +43,7 @@
   const FMT = FW / FH < 0.8 ? 'tik' : (FW / FH < 1.25 ? 'kv' : 'keng'); root.classList.add('fx-' + FMT);
   const D = Number(_o && _o.getAttribute('data-duration')) || 4;
   const sc = FMT === 'keng' ? FW / 1920 : FW / 1080;
-  const ol = (Number(V.olcham) || 1) * (FMT === 'keng' ? 1.28 : FMT === 'kv' ? 1.05 : 1.45);
+  const ol = (Number(V.olcham) || 1) * (FMT === 'keng' ? 1.28 : FMT === 'kv' ? 1.05 : 2.0);
   root.style.fontSize = (16 * sc * ol) + 'px';
   root.style.setProperty('--urgu', V.urgu || '#f0a24b');
   const W = q('.hp-w'); W.classList.add(V.joy === 'yuqori' ? 'yuqori' : V.joy === 'markaz' ? 'markaz' : 'past');
