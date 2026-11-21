@@ -28,6 +28,10 @@
       "type": "hyperframes:block"
     },
     {
+      "name": "roto",
+      "type": "hyperframes:block"
+    },
+    {
       "name": "trek-yopishtir",
       "type": "hyperframes:block"
     },
