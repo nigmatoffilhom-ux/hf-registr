@@ -1,6 +1,6 @@
 /* uslublar.js — FX.uslub.* : uslub tokenlarini CSS'dan o'qiydi va namuna sahnani shu uslub ritmida jonlantiradi.
    Talab: gsap + animatsiya/anim.js (FX.anim) + uslublar/uslublar.css oldin ulangan bo'lsin.
-   Ulash (host <head>):  <script src="uslublar/uslublar.js"></script>
+   Ulash (host <head>, hyperframes add dan keyin):  <script src="compositions/uslublar/uslublar.js"></script>
    API:
      FX.uslub.tokenlar(el)            -> { ease, easeChiqish, dur, har }  (el yoki ota-onasida class="uslub-*" bo'lsin)
      FX.uslub.qolla(el)               -> tokenlarni FX.anim.standart ga yozadi (butun sahifa bitta uslubda bo'lsa qulay)
